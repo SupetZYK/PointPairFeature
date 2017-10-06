@@ -1,0 +1,2 @@
+1. 修改了pcl中的uniformsampling，加入了取indices的函数
+2. 修改了mls中的计算函数，对法线进行了正规化
