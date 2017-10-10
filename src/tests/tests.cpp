@@ -31,7 +31,6 @@ int main(int argc, char**argv)
 	}
 
 #endif
-
 #ifdef test_get_neiboring
 	Eigen::Vector3i grid_div(3, 3, 4);
 	Eigen::Vector3i grid_div_mul(1, 3, 9);
@@ -91,7 +90,6 @@ int main(int argc, char**argv)
 
 
 #endif
-
 #ifdef test_my_smart_sampling
 	pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
 	pcl::PointCloud<NormalType>::Ptr model_normals(new pcl::PointCloud<NormalType>());
@@ -118,6 +116,11 @@ int main(int argc, char**argv)
 
 
 #endif
+
+#ifdef test_opencv_read_depth
+
+#endif
+
 	getchar();
 
 		
