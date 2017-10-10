@@ -77,6 +77,7 @@ ZYK_EXPORTS bool readPointCloud(std::string filename, std::string format, PointC
 void ZYK_EXPORTS transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCloud<NormalType>&normals_out, const Eigen::Affine3f& transform);
 
 
+
 //replace eigen
 inline double dot(const NormalType& n1, const NormalType&n2){ return n1.normal_x*n2.normal_x + n1.normal_y*n2.normal_y + n1.normal_z*n2.normal_z; };
 double dot(const float* n1, const float* n2, const int dim);

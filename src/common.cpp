@@ -1,6 +1,7 @@
 #include "common.h"
 #include <pcl/io/vtk_io.h>
 #include "SmartSampling.hpp"
+#include "cv.h"
 double computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud, double max_coord[3], double min_coord[3])
 {
 	double res = 0.0;
@@ -239,6 +240,36 @@ void transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCl
   	    normals_out[i].normal_y = static_cast<float> (transform (1, 0) * nt.coeffRef (0) + transform (1, 1) * nt.coeffRef (1) + transform (1, 2) * nt.coeffRef (2));
         normals_out[i].normal_z = static_cast<float> (transform (2, 0) * nt.coeffRef (0) + transform (2, 1) * nt.coeffRef (1) + transform (2, 2) * nt.coeffRef (2));
 	}
+}
+
+
+IplImage * loadDepth(std::string a_name)
+{
+	std::ifstream l_file(a_name.c_str(), std::ofstream::in | std::ofstream::binary);
+
+	if (l_file.fail() == true)
+	{
+		printf("cv_load_depth: could not open file for writing!\n");
+		return NULL;
+	}
+	int l_row;
+	int l_col;
+
+	l_file.read((char*)&l_row, sizeof(l_row));
+	l_file.read((char*)&l_col, sizeof(l_col));
+
+	IplImage * lp_image = cvCreateImage(cvSize(l_col, l_row), IPL_DEPTH_16U, 1);
+
+	for (int l_r = 0; l_r < l_row; ++l_r)
+	{
+		for (int l_c = 0; l_c < l_col; ++l_c)
+		{
+			l_file.read((char*)&CV_IMAGE_ELEM(lp_image, unsigned short, l_r, l_c), sizeof(unsigned short));
+		}
+	}
+	l_file.close();
+
+	return lp_image;
 }
 
 double dot(const float* n1, const float* n2, const int dim)
