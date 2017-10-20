@@ -3,7 +3,7 @@
 #include "PPFFeature.h"
 #include "pose_cluster.h"
 #include "SmartSampling.hpp"
-
+#include <pcl/surface/mls.h>
 #include <pcl/io/pcd_io.h>
 std::string model_filename_;
 std::string save_filename_;
@@ -19,6 +19,8 @@ bool save_sampled_cloud_ (false);
 bool normal_reorient_switch_ (false);
 bool smart_sample_border_ (false);
 bool show_original_model_ (false);
+bool use_mls_ (false);
+float ang_thresh (1);
 float model_ss_ (3.0f);
 float plane_ss_ (3.0f);
 float curvature_radius_(2.0f);
@@ -37,9 +39,10 @@ void showHelp(char *filename)
 	std::cout << "     -w:						write the sampled model" << std::endl;
 	std::cout << "     --ply:					Use .poly as input cloud. Default is .pcd" << std::endl;
 	std::cout << "     --rn:					Reorient switch!" << std::endl;
-	std::cout << "     --sp:					smart sampling borders" << std::endl;
 	std::cout << "     --so:					show original model" << std::endl;
 	std::cout << "     --in:					Use existing normal files" << std::endl;
+	std::cout << "     --mls:					Use moving least squares" << std::endl;
+	std::cout << "     --sp val:				smart sampling borders, set angle_degree thresh" << std::endl;
 	std::cout << "     --model_ss val:			Model uniform sampling radius (default 3)" << std::endl;
 	std::cout << "     --plane_ss val:			Model plane feature uniform sampling radius, if not set, default same as model" << std::endl;
 	std::cout << "     --curv_r val:			curvature radius" << std::endl;
@@ -84,6 +87,10 @@ void parseCommandLine(int argc, char *argv[])
 	{
 		use_existing_normal_data_ = true;
 	}
+	if (pcl::console::find_switch(argc, argv, "--mls"))
+	{
+		use_mls_ = true;
+	}
 	//Model & scene filenames
 	std::vector<int> filenames;
 	if (use_ply_filetype_ == false)
@@ -105,6 +112,7 @@ void parseCommandLine(int argc, char *argv[])
 	plane_ss_ = model_ss_;
 	pcl::console::parse_argument(argc, argv, "--plane_ss", plane_ss_);
 	pcl::console::parse_argument(argc, argv, "--curv_r", curvature_radius_);
+	pcl::console::parse_argument(argc, argv, "--sp", ang_thresh);
 
 
 }
@@ -187,6 +195,56 @@ main(int argc, char *argv[])
 	model_approximate_center(1) = (max_coord[1] + min_coord[1]) / 2;
 	model_approximate_center(2) = (max_coord[2] + min_coord[2]) / 2;
 
+	
+	
+	
+
+	std::cout << "Model length: " << model_length << std::endl;
+	std::cout << "Model width: " << model_width << std::endl;
+	std::cout << "Model height: " << model_height << std::endl;
+
+	//
+	//  Compute Normals
+	//
+
+	if (!use_existing_normal_data_)
+	{
+		if (!use_mls_)
+		{
+			pcl::NormalEstimationOMP<PointType, NormalType> norm_est;
+			norm_est.setKSearch(20);
+			//norm_est.setRadiusSearch(scene_ss_);
+			norm_est.setInputCloud(model);
+			norm_est.compute(*model_normals);
+		}
+		else
+		{
+			pcl::PointCloud<PointType>::Ptr pnts_tmp(new pcl::PointCloud<PointType>());
+			MovingLeastSquares<PointType, PointType> mls;
+			search::KdTree<PointType>::Ptr tree;
+			// Set parameters
+			mls.setInputCloud(model);
+			mls.setComputeNormals(true);
+			mls.setPolynomialFit(true);
+			mls.setSearchMethod(tree);
+			mls.setSearchRadius(0.7*model_ss_);
+			mls.process(*pnts_tmp);
+			model = pnts_tmp;
+			model_normals = mls.getNormals();
+			//for (size_t i = 0; i < scene_keyNormals->size(); ++i)
+			//{
+			//	flipNormalTowardsViewpoint(scene_keypoints->at(i), 0, 0, 0, scene_keyNormals->at(i).normal[0], scene_keyNormals->at(i).normal[1], scene_keyNormals->at(i).normal[2]);
+			//}
+		}
+
+		cout << "Normal compute complete£¡" << endl;
+	}
+	else
+	{
+		cout << "Using existing normals" << endl;
+	}
+
+
 	if (normal_reorient_switch_)
 	{
 		for (int32_t i = 0; i < model->size(); ++i)
@@ -199,31 +257,10 @@ main(int argc, char *argv[])
 				model_normals->points[i].normal_y = -normal_temp(1);
 				model_normals->points[i].normal_z = -normal_temp(2);
 			}
-			model->points[i].x -= model_approximate_center(0);
-			model->points[i].y -= model_approximate_center(1);
-			model->points[i].z -= model_approximate_center(2);
+			//model->points[i].x -= model_approximate_center(0);
+			//model->points[i].y -= model_approximate_center(1);
+			//model->points[i].z -= model_approximate_center(2);
 		}
-	}
-	
-	
-
-	std::cout << "Model length: " << model_length << std::endl;
-	std::cout << "Model width: " << model_width << std::endl;
-	std::cout << "Model height: " << model_height << std::endl;
-
-	//
-	//  Compute Normals
-	//
-
-	pcl::NormalEstimationOMP<PointType, NormalType> norm_est;
-	
-	if (!use_existing_normal_data_)
-	{
-		norm_est.setKSearch(10);
-		norm_est.setInputCloud(model);
-		//norm_est.setViewPoint(trans(0) + model_approximate_center(0), trans(1) + model_approximate_center(1), trans(2) + model_approximate_center(2));
-		norm_est.compute(*model_normals);
-		cout << "Normal compute complete£¡" << endl;
 	}
 
 	//
@@ -290,7 +327,7 @@ main(int argc, char *argv[])
 	//smat sample
 	pcl::SmartSampling<PointType, NormalType> smart_samp;
 	if (smart_sample_border_)
-		SmartDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
+		SmartDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, ang_thresh, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
 	else
 		uniformDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
 	if (plane_ss_>0)
@@ -358,9 +395,19 @@ main(int argc, char *argv[])
 		cout << model_size[i] << " \t";
 	cout << endl;
 
+
+	//
+	// if use smart sampling ,the resolution needs to be recalculated!
+	//
+	if (smart_sample_border_)
+	{
+		model_ss_ = static_cast<float> (computeCloudResolution(model, max_coord, min_coord));
+		cout << ">>Model smart sampled, then, recalculate resolution: " << model_ss_ << endl;
+	}
+
 	//model ppf space
 	zyk::PPF_Space model_feature_space;
-	model_feature_space.init(keypoints, keyNormals, 0.15, float(model_ss_),true);
+	model_feature_space.init(keypoints, keyNormals, 0.2, float(model_ss_),true);
 	model_feature_space.model_size[0]=model_size[0];
 	model_feature_space.model_size[1]=model_size[1];
 	model_feature_space.model_size[2]=model_size[2];

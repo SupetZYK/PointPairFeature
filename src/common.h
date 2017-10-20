@@ -25,10 +25,13 @@
 //#include <pcl/keypoints/harris_3d.h> //harris keypoint
 //#include <pcl/surface/gp3.h> //triangularization point cloud
 //#include <pcl/features/fpfh_omp.h>
+
+#include <cv.h>
+#include <opencv2/rgbd.hpp>
+
 #include <pcl/features/ppf.h>
 #include <pcl/features/principal_curvatures.h>
 #include "stdint.h"
-
 #if (defined WIN32 || defined _WIN32 || defined WINCE || defined __CYGWIN__)&& defined zyk_ppf_EXPORTS
 # define ZYK_EXPORTS  __declspec(dllexport)
 #elif defined __GNUC__ && __GNUC__ >= 4
@@ -67,19 +70,18 @@ namespace zyk
 ZYK_EXPORTS pcl::IndicesPtr uniformDownSamplePoint(pcl::PointCloud<PointType>::Ptr pointcloud, double relSamplingDistance, pcl::PointCloud<PointType>::Ptr outCloud);
 ZYK_EXPORTS pcl::IndicesPtr uniformDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double relSamplingDistance,
 	pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNormal);
-ZYK_EXPORTS bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double relSamplingDistance,
+ZYK_EXPORTS bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double ang_degree_thresh, double relSamplingDistance,
 	pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNormal);
 ZYK_EXPORTS double computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud, double max_coord[3] = NULL, double min_coord[3] = NULL);
 ZYK_EXPORTS bool readPointCloud(std::string filename, std::string format, PointCloud<PointType>::Ptr outCloud, PointCloud<NormalType>::Ptr outNor = NULL);
 //ZYK_EXPORTS void ISSmethod(const PointCloud<PointType>::Ptr &inCloud, double salientRatio, double NMPratio, PointCloud<PointType>::Ptr &outCloud);
 
-
-void ZYK_EXPORTS transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCloud<NormalType>&normals_out, const Eigen::Affine3f& transform);
-
-
+ZYK_EXPORTS IplImage * loadDepth(std::string a_name);
+ZYK_EXPORTS void transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCloud<NormalType>&normals_out, const Eigen::Affine3f& transform);
+ZYK_EXPORTS void cv_depth_2_pcl_cloud(std::string a_name, cv::InputArray K_in, pcl::PointCloud<PointType>::Ptr pt,float scale=1.0);
 
 //replace eigen
-inline double dot(const NormalType& n1, const NormalType&n2){ return n1.normal_x*n2.normal_x + n1.normal_y*n2.normal_y + n1.normal_z*n2.normal_z; };
-double dot(const float* n1, const float* n2, const int dim);
-double norm(const float* n, const int dim);
-double dist(const float* n1, const float* n2, const int dim);
+ZYK_EXPORTS inline double dot(const NormalType& n1, const NormalType&n2){ return n1.normal_x*n2.normal_x + n1.normal_y*n2.normal_y + n1.normal_z*n2.normal_z; };
+ZYK_EXPORTS double dot(const float* n1, const float* n2, const int dim);
+ZYK_EXPORTS double norm(const float* n, const int dim);
+ZYK_EXPORTS double dist(const float* n1, const float* n2, const int dim);

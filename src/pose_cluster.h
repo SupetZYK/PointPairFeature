@@ -19,12 +19,14 @@ namespace zyk
 	  pose_cluster(const Eigen::Affine3f& transformation, float vote){ checkAndPutIn(transformation, vote, 100, 100); };
 		~pose_cluster(){};
 		bool checkAndPutIn(const Eigen::Affine3f& transformation, float vote, float distance_thresh, float angle_thresh);
+		bool checkAndPutIn_test_ver(const Eigen::Affine3f& transformation, float vote, float distance_thresh, float angle_thresh);
 		int32_t size(){ return transformations.size(); };
 		bool empty() { return transformations.empty(); };
 		float getVote() { return vote_count; };
 		void getMeanTransformation(Eigen::Affine3f& transformation) { transformation = mean_transformation; };
 
 		void checkDisAndRemove(int index,float thresh);
+
 		vector < Eigen::Affine3f, Eigen::aligned_allocator<Eigen::Affine3f> > transformations;
 		vector < int> voteLists;
 		float vote_count = 0.0;

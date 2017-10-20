@@ -39,21 +39,20 @@ namespace zyk
 		bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<Normal>::Ptr pointNormal, float angle_step, float distance_step,bool ignore_plane=false);
 		void clear();
 		////////////////////
-		//////basic property access
+		////// property access
 		////////////////////
+		const double getModelDiameter() const { return max_p[3]; };
 	public:
 		////////////////////
 		//////methods
 		////////////////////
-		bool findBoundingBox();
-		bool constructGrid();
+
 		static float computeAlpha(const PointType& first_pnt, const NormalType& first_normal, const PointType& second_pnt);
 		static float computeAlpha(const Eigen::Vector3f& first_pnt, const Eigen::Vector3f& first_normal, const Eigen::Vector3f& second_pnt);
 		static void computeSinglePPF(const PointType& first_pnt, const NormalType& first_normal, const PointType& second_pnt, const NormalType& second_normal, zyk::PPF& ppf);
 		static void computeSinglePPF(const Eigen::Vector3f& first_pnt, const Eigen::Vector3f& first_normal, const Eigen::Vector3f& second_pnt, const Eigen::Vector3f& second_normal,zyk::PPF& ppf);
 		static void computeSinglePPF(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<Normal>::Ptr pointNormal, int32_t index1, int32_t index2, PPF& ppf);
 		static bool getPoseFromPPFCorresspondence(PointType& model_point, NormalType& model_normal, PointType& scene_point, NormalType&scene_normal, float alpha, Eigen::Affine3f& transformation);
-		bool computeAllPPF();
 		//test speed
 		void getppfBoxCoord(PPF& ppf, Eigen::Vector4i& ijk);
 		void getppfBoxCoord(PPF& ppf, int32_t* ijk);
@@ -69,7 +68,6 @@ namespace zyk
 		
 		////////match
 		void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<Normal>::Ptr scene_normals, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
-		void recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
 		///////USER IO
 		bool save(std::string file_name);
 		bool load(std::string fine_name);
@@ -83,14 +81,20 @@ namespace zyk
 		float model_size[3];
 		float model_res;
 		bool ignore_plane_switch = false;
-	private:
+	protected:
 		///////////////IO
 		template<class Archive>
 		void save(Archive& ar, const unsigned int version);
 		template<class Archive>
 		void load(Archive& ar, const unsigned int version);
 		BOOST_SERIALIZATION_SPLIT_MEMBER()
-	private:
+
+		/////////////METHODS
+		void recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
+		bool computeAllPPF();
+		bool findBoundingBox();
+		bool constructGrid();
+	protected:
 		////////////////////
 		//////basic property
 		////////////////////
