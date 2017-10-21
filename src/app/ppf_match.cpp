@@ -1,8 +1,14 @@
-#include "common.h"
-#include "Voxel_grid.h"
+#include <common.h>
 #include "PPFFeature.h"
 #include "pose_cluster.h"
+//pcl
+#include <pcl/console/parse.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/features/principal_curvatures.h>
+#include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/surface/mls.h>
+#include <pcl/common/transforms.h>
+using namespace pcl;
 //std::string model_filename_;
 std::string model_ppfs_filename_;
 std::string scene_filename_;

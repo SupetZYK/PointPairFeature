@@ -2,23 +2,22 @@
 #include <string>
 
 //#include <pcl/io/pcd_io.h>
-#include <pcl/point_cloud.h>
+//#include <pcl/point_cloud.h>
 //#include <pcl/correspondence.h>
-#include <pcl/features/normal_3d_omp.h>
+
 //#include <pcl/features/shot_omp.h>
 //#include <pcl/features/board.h>
-#include <pcl/keypoints/uniform_sampling.h>
+
 //#include <pcl/recognition/cg/hough_3d.h>
 //#include <pcl/recognition/cg/geometric_consistency.h>
-#include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/kdtree/kdtree_flann.h>
+//#include <pcl/visualization/pcl_visualizer.h>
+
 //#include <pcl/kdtree/impl/kdtree_flann.hpp>
 //#include <pcl/impl/point_types.hpp>
-#include <pcl/common/transforms.h>
-#include <pcl/console/parse.h>
-#include <pcl/io/ply_io.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/registration/icp.h> //iterative closet point
+
+//#include <pcl/console/parse.h>
+
+//#include <pcl/registration/icp.h> //iterative closet point
 //#include <pcl/recognition/hv/hv_go.h> //hypothesis verification
 //#include <pcl/keypoints/iss_3d.h> //iss method key point detect
 //#include <pcl/features/rops_estimation.h> //rops feature
@@ -28,9 +27,11 @@
 
 #include <cv.h>
 #include <opencv2/rgbd.hpp>
+#include "pcl/point_types.h"
+#include <pcl/pcl_base.h>
 
-#include <pcl/features/ppf.h>
-#include <pcl/features/principal_curvatures.h>
+
+//#include <pcl/features/principal_curvatures.h>
 #include "stdint.h"
 #if (defined WIN32 || defined _WIN32 || defined WINCE || defined __CYGWIN__)&& defined zyk_ppf_EXPORTS
 # define ZYK_EXPORTS  __declspec(dllexport)
@@ -46,8 +47,7 @@ typedef pcl::PointXYZ PointType;
 typedef pcl::Normal NormalType;
 typedef pcl::ReferenceFrame RFType;
 
-using namespace std;
-using namespace pcl;
+
 namespace zyk
 {
 	struct box
@@ -62,8 +62,8 @@ namespace zyk
 		std::vector<int32_t> pnts_index;
 	};
 
-	ZYK_EXPORTS void getNeiboringBoxIndex3D(int32_t currentIndex, const Eigen::Vector3i& grid_div, vector<int32_t>& out_vec);
-	ZYK_EXPORTS void getNeiboringBoxIndex3D(const Eigen::Vector3i& currentCoord, const Eigen::Vector3i& grid_div, vector<int32_t>& out_vec);
+	ZYK_EXPORTS void getNeiboringBoxIndex3D(int32_t currentIndex, const Eigen::Vector3i& grid_div, std::vector<int32_t>& out_vec);
+	ZYK_EXPORTS void getNeiboringBoxIndex3D(const Eigen::Vector3i& currentCoord, const Eigen::Vector3i& grid_div, std::vector<int32_t>& out_vec);
 }
 //ZYK_EXPORTS bool downSamplePointCloud(const pcl::PointCloud<PointType>::Ptr &scene, const double relSamplingDistance,
 //	pcl::PointCloud<PointType>::Ptr &outCloud, const int method = 1);
@@ -73,12 +73,12 @@ ZYK_EXPORTS pcl::IndicesPtr uniformDownSamplePointAndNormal(pcl::PointCloud<Poin
 ZYK_EXPORTS bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double ang_degree_thresh, double relSamplingDistance,
 	pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNormal);
 ZYK_EXPORTS double computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud, double max_coord[3] = NULL, double min_coord[3] = NULL);
-ZYK_EXPORTS bool readPointCloud(std::string filename, std::string format, PointCloud<PointType>::Ptr outCloud, PointCloud<NormalType>::Ptr outNor = NULL);
+ZYK_EXPORTS bool readPointCloud(std::string filename, std::string format, pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNor = NULL);
 //ZYK_EXPORTS void ISSmethod(const PointCloud<PointType>::Ptr &inCloud, double salientRatio, double NMPratio, PointCloud<PointType>::Ptr &outCloud);
 
 ZYK_EXPORTS IplImage * loadDepth(std::string a_name);
 ZYK_EXPORTS void transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCloud<NormalType>&normals_out, const Eigen::Affine3f& transform);
-ZYK_EXPORTS void cv_depth_2_pcl_cloud(std::string a_name, cv::InputArray K_in, pcl::PointCloud<PointType>::Ptr pt,float scale=1.0);
+ZYK_EXPORTS void cv_depth_2_pcl_cloud(std::string depth_file_name, cv::Mat intrinsicK, pcl::PointCloud<PointType>::Ptr out);
 
 //replace eigen
 ZYK_EXPORTS inline double dot(const NormalType& n1, const NormalType&n2){ return n1.normal_x*n2.normal_x + n1.normal_y*n2.normal_y + n1.normal_z*n2.normal_z; };

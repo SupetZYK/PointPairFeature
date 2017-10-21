@@ -1,8 +1,17 @@
 //#include <OtherHeaders.h>
-#include "common.h"
-#include "Voxel_grid.h"
+#include <common.h>
 #include "PPFFeature.h"
 #include "pose_cluster.h"
+//pcl
+#include <pcl/console/parse.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/features/principal_curvatures.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/surface/mls.h>
+#include <pcl/common/transforms.h>
+
+
+
 
 //std::string model_filename_;
 std::string model_ppfs_filename_;
@@ -10,6 +19,7 @@ std::string scene_filename_;
 //std::string model_normal_filename_;
 std::string scene_normal_filename_;
 
+using namespace pcl;
 //Algorithm params
 bool show_keypoints_ (false);
 bool show_correspondences_ (false);
@@ -41,7 +51,7 @@ float curvature_radius_(2.0f);
 class test_ppf_feature_space :public zyk::PPF_Space
 {
 public:
-	void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<Normal>::Ptr scene_normals, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
+	void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
 	void setScenePntsFlag(vector<int>*flag_vec) { scene_pnt_flag = flag_vec; };
 protected:
 	vector<int>*scene_pnt_flag = NULL;
@@ -253,8 +263,8 @@ main(int argc, char *argv[])
 	{
 		pcl::NormalEstimationOMP<PointType, NormalType> norm_est;
 		norm_est.setIndices(sampled_index_ptr);
-		norm_est.setKSearch(20);
-		//norm_est.setRadiusSearch(scene_ss_);
+		//norm_est.setKSearch(20);
+		norm_est.setRadiusSearch(scene_ss_);
 		norm_est.setInputCloud(scene);
 		norm_est.compute(*scene_keyNormals);
 	}
@@ -268,7 +278,7 @@ main(int argc, char *argv[])
 		mls.setComputeNormals(true);
 		mls.setPolynomialFit(true);
 		mls.setSearchMethod(tree);
-		mls.setSearchRadius(0.5*scene_ss_);
+		mls.setSearchRadius(scene_ss_);
 		mls.process(*scene_keypoints);
 
 		scene_keyNormals = mls.getNormals();
@@ -280,65 +290,65 @@ main(int argc, char *argv[])
 
 	cout << "Normal compute complete£¡" << endl;
 
-	//
-	// Compute curvature
-	//
+	////
+	//// Compute curvature
+	////
 
-	pcl::PrincipalCurvaturesEstimation<PointType, NormalType> curv_est;
-	pcl::PointCloud<pcl::PrincipalCurvatures>::Ptr curv(new pcl::PointCloud<pcl::PrincipalCurvatures>());
-	curv_est.setInputCloud(scene_keypoints);
-	curv_est.setInputNormals(scene_keyNormals);
-	curv_est.setRadiusSearch(curvature_radius_ * scene_ss_);
-	curv_est.compute(*curv);
+	//pcl::PrincipalCurvaturesEstimation<PointType, NormalType> curv_est;
+	//pcl::PointCloud<pcl::PrincipalCurvatures>::Ptr curv(new pcl::PointCloud<pcl::PrincipalCurvatures>());
+	//curv_est.setInputCloud(scene_keypoints);
+	//curv_est.setInputNormals(scene_keyNormals);
+	//curv_est.setRadiusSearch(curvature_radius_ * scene_ss_);
+	//curv_est.compute(*curv);
 
 
-	//
-	// show those curvature 0 and none_zero separately
-	//
-	pcl::PointCloud<PointType>::Ptr pnts_zero(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr normals_zero(new pcl::PointCloud<NormalType>());
-	pcl::PointCloud<PointType>::Ptr pnts_no_zero(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr normals_no_zero(new pcl::PointCloud<NormalType>());
-	//flag vec
-	vector<int> scene_pnt_flag;
-	scene_pnt_flag.resize(scene_keypoints->size(),0);
-	for (int i = 0; i < scene_keypoints->size(); ++i)
-	{
-		pcl::PrincipalCurvatures c = curv->at(i);
-		if (abs(c.pc1) < 0.1 && abs(c.pc2) < 0.1)
-		{
-			scene_pnt_flag[i] = 1;
-			pnts_zero->push_back(scene_keypoints->at(i));
-			normals_zero->push_back(scene_keyNormals->at(i));
-		}
-		else
-		{
-			pnts_no_zero->push_back(scene_keypoints->at(i));
-			normals_no_zero->push_back(scene_keyNormals->at(i));
-		}
-	}
-	//
-	// visualize split
-	//
-	//
-	//visualize zero
-	//
+	////
+	//// show those curvature 0 and none_zero separately
+	////
+	//pcl::PointCloud<PointType>::Ptr pnts_zero(new pcl::PointCloud<PointType>());
+	//pcl::PointCloud<NormalType>::Ptr normals_zero(new pcl::PointCloud<NormalType>());
+	//pcl::PointCloud<PointType>::Ptr pnts_no_zero(new pcl::PointCloud<PointType>());
+	//pcl::PointCloud<NormalType>::Ptr normals_no_zero(new pcl::PointCloud<NormalType>());
+	////flag vec
+	//vector<int> scene_pnt_flag;
+	//scene_pnt_flag.resize(scene_keypoints->size(),0);
+	//for (int i = 0; i < scene_keypoints->size(); ++i)
+	//{
+	//	pcl::PrincipalCurvatures c = curv->at(i);
+	//	if (abs(c.pc1) < 0.1 && abs(c.pc2) < 0.1)
+	//	{
+	//		scene_pnt_flag[i] = 1;
+	//		pnts_zero->push_back(scene_keypoints->at(i));
+	//		normals_zero->push_back(scene_keyNormals->at(i));
+	//	}
+	//	else
+	//	{
+	//		pnts_no_zero->push_back(scene_keypoints->at(i));
+	//		normals_no_zero->push_back(scene_keyNormals->at(i));
+	//	}
+	//}
+	////
+	//// visualize split
+	////
+	////
+	////visualize zero
+	////
 
-	pcl::visualization::PCLVisualizer zeroVisual("zero detect");
-	zeroVisual.addCoordinateSystem(20);
-	zeroVisual.addPointCloud(pnts_zero, pcl::visualization::PointCloudColorHandlerCustom<PointType>(pnts_zero, 0.0, 0.0, 255.0), "zero_pnts");
-	zeroVisual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "zero_pnts");
-	zeroVisual.spin();
+	//pcl::visualization::PCLVisualizer zeroVisual("zero detect");
+	//zeroVisual.addCoordinateSystem(20);
+	//zeroVisual.addPointCloud(pnts_zero, pcl::visualization::PointCloudColorHandlerCustom<PointType>(pnts_zero, 0.0, 0.0, 255.0), "zero_pnts");
+	//zeroVisual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "zero_pnts");
+	//zeroVisual.spin();
 
-	//
-	//visualize no-zero
-	//
+	////
+	////visualize no-zero
+	////
 
-	pcl::visualization::PCLVisualizer nozeroVisual("no-zero detect");
-	nozeroVisual.addCoordinateSystem(20);
-	nozeroVisual.addPointCloud(pnts_no_zero, pcl::visualization::PointCloudColorHandlerCustom<PointType>(pnts_no_zero, 0.0, 0.0, 255.0), "pnts_no_zero");
-	nozeroVisual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "pnts_no_zero");
-	nozeroVisual.spin();
+	//pcl::visualization::PCLVisualizer nozeroVisual("no-zero detect");
+	//nozeroVisual.addCoordinateSystem(20);
+	//nozeroVisual.addPointCloud(pnts_no_zero, pcl::visualization::PointCloudColorHandlerCustom<PointType>(pnts_no_zero, 0.0, 0.0, 255.0), "pnts_no_zero");
+	//nozeroVisual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "pnts_no_zero");
+	//nozeroVisual.spin();
 
 
 	//
@@ -380,22 +390,23 @@ main(int argc, char *argv[])
 	cout << ">recompute score angle thresh: " << recopute_score_ang_thresh << endl;
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
 	//model_feature_space.setScenePntsFlag(&scene_pnt_flag);
-	model_feature_space.match(pnts_no_zero, normals_no_zero, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
+	model_feature_space.match(scene_keypoints, scene_keyNormals, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
 	//
 	//test true
 	//
 	Eigen::Matrix4f rt;
-	////ape 0
-	//rt << -0.0963063, 0.994044, -0.0510079, -111.814,
-	//	-0.573321, -0.0135081, 0.81922, -78.3622,
-	//	0.813651, 0.10814, 0.571207, 1036.12,
-	//	0, 0, 0, 1;
-	rt << -0.401065, -0.873948, 0.27452, -82.4209,
-		0.775171, -0.164104, 0.610066, 11.6872,
-		-0.488116, 0.457476, 0.743275, 792.471,
+	//ape 0
+	rt << -0.0963063, 0.994044, -0.0510079, -111.814,
+		-0.573321, -0.0135081, 0.81922, -78.3622,
+		0.813651, 0.10814, 0.571207, 1036.12,
 		0, 0, 0, 1;
+	////lamp 81
+	//rt << -0.401065, -0.873948, 0.27452, -82.4209,
+	//	0.775171, -0.164104, 0.610066, 11.6872,
+	//	-0.488116, 0.457476, 0.743275, 792.471,
+	//	0, 0, 0, 1;
 	Eigen::Affine3f arf(rt);
 	//true cluster
 	zyk::pose_cluster true_cluster(arf,0);

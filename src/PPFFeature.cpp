@@ -1,6 +1,10 @@
 #include "PPFFeature.h"
+#include <pcl/features/ppf.h>
+#include <pcl/common/transforms.h>
+#include <fstream>
 using namespace zyk;
 //IMPLEMENT_SERIAL(PPF_Space,CObject,1);
+
 
 zyk::PPF_Space::PPF_Space()
 {
@@ -12,7 +16,7 @@ zyk::PPF_Space::~PPF_Space()
 	for (int32_t i = 0; i < ppf_box_vector.size();i++)
 		if (ppf_box_vector[i] != NULL) delete ppf_box_vector[i];
 }
-bool zyk::PPF_Space::init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<Normal>::Ptr pointNormal, float angle_step, float distance_step, bool ignore_plane)
+bool zyk::PPF_Space::init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step, bool ignore_plane)
 {
 	assert(angle_step>0 && distance_step>0);
 	leaf_size(0) = angle_step;
@@ -56,7 +60,7 @@ bool zyk::PPF_Space::init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::Point
 	return true;
 
 }
-bool zyk::PPF_Space::init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<Normal>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane)
+bool zyk::PPF_Space::init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane)
 {
 	////中心对称标志
 	//model_x_centrosymmetric = x_s;
@@ -256,7 +260,7 @@ void zyk::PPF_Space::computeSinglePPF(const Eigen::Vector3f& first_pnt, const Ei
 	//ppf.ppf.alpha_m = angle;
 }
 
-void zyk::PPF_Space::computeSinglePPF(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<Normal>::Ptr pointNormal, int32_t index1, int32_t index2, PPF& ppf)
+void zyk::PPF_Space::computeSinglePPF(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int32_t index1, int32_t index2, PPF& ppf)
 {
 	const Eigen::Vector3f& first_pnt = pointcloud->at(index1).getVector3fMap();
 	const Eigen::Vector3f& first_normal = pointNormal->at(index1).getNormalVector3fMap();
@@ -466,7 +470,7 @@ int32_t zyk::PPF_Space::getppfBoxIndex(PPF& ppf)
 
 
 
-void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<Normal>::Ptr scene_normals,float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
+void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
 {
 	int scene_steps = floor(1.0 / relativeReferencePointsNumber);
 	if (scene_steps < 1)scene_steps = 1;

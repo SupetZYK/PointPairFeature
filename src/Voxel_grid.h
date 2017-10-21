@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-#include <stdint.h>
 #include "common.h"
 using namespace std;
 namespace zyk

@@ -86,3 +86,40 @@ bool zyk::pose_cluster::checkAndPutIn(const Eigen::Affine3f& transformation, flo
 	return true;
 
 }
+
+bool zyk::pose_cluster::checkAndPutIn_test_ver(const Eigen::Affine3f & transformation, float vote, float distance_thresh, float angle_thresh)
+{
+	if (transformations.empty())
+	{
+		transformations.push_back(transformation);
+		vote_count += vote;
+		voteLists.push_back(vote);
+		mean_transformation = transformation;
+
+		Eigen::AngleAxisf tmp(mean_transformation.rotation());
+		//check tmp.angle()
+		float angle = tmp.angle();
+		//if(angle<0)
+		//	cout<<"angle <0 detect!"<<endl;
+		//if (angle > M_PI)
+		//angle -= 2 * M_PI;
+		//else if (angle < -M_PI)
+		//angle += 2 * M_PI;
+		first_angle = angle;
+		first_axis = tmp.axis();
+		mean_rot = angle*first_axis;
+		mean_trans = mean_transformation.translation();
+		return true;
+	}
+
+	if ((transformation.translation() - transformations[0].translation()).norm() > distance_thresh)
+		return false;
+	Eigen::Affine3f dT = transformation.inverse()*transformations[0];
+	if (abs(Eigen::AngleAxisf(dT.rotation()).angle()) > angle_thresh)
+		return false;
+	transformations.push_back(transformation);
+
+	return true;
+}
+
+

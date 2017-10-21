@@ -93,7 +93,7 @@ namespace pcl
 		void push_back(size_t index){ index_vector.push_back(index); };
       };
 
-	  vector<size_t> selected_indices_;
+	  std::vector<size_t> selected_indices_;
 	  /** \brief in degrees */
 	  float angle_thresh = 1;
 

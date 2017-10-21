@@ -1,7 +1,19 @@
 #include "common.h"
+
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/keypoints/uniform_sampling.h>
+#include <pcl/kdtree/kdtree_flann.h>
+
+#include <pcl/io/ply_io.h>
+#include <pcl/io/pcd_io.h>
+
 #include <pcl/io/vtk_io.h>
 #include "SmartSampling.hpp"
-#include "cv.h"
+#include <pcl/common/transforms.h>
+
+using namespace std;
+using namespace pcl;
+
 double computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud, double max_coord[3], double min_coord[3])
 {
 	double res = 0.0;
@@ -90,14 +102,14 @@ pcl::IndicesPtr uniformDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr 
 	return selectedIndex;
 }
 
-bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double relSamplingDistance,
+bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double ang_degree_thresh, double relSamplingDistance,
 	pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNormal)
 {
 	pcl::SmartSampling<PointType,NormalType> sampling;
 	sampling.setInputCloud(pointcloud);
 	sampling.setNormals(pointNormal);
 	sampling.setRadiusSearch(relSamplingDistance);
-	sampling.setAngleThresh(0.08);
+	sampling.setAngleThresh(ang_degree_thresh);
 	sampling.filter(*outCloud);
 	vector<size_t>& selectedIndex = sampling.getSelectedIndex();
 
@@ -108,6 +120,7 @@ bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, p
 		outNormal->points[i] = pointNormal->points[selectedIndex[i]];
 	return true;
 }
+
 
 //bool downSamplePointCloud(const pcl::PointCloud<PointType>::Ptr &scene, const double relSamplingDistance,
 //	pcl::PointCloud<PointType>::Ptr &outCloud, const int method)
@@ -271,6 +284,40 @@ IplImage * loadDepth(std::string a_name)
 
 	return lp_image;
 }
+
+
+void cv_mat_cloud_to_pcl_cloud(cv::Mat pc, pcl::PointCloud<PointType>::Ptr pt)
+{
+	for (int i = 0; i < pc.rows; i++)
+	{
+		for (int j = 0; j < pc.cols; ++j)
+		{
+			PointType _tem;
+			_tem.x = pc.at<cv::Vec3f>(i, j)[0];
+			_tem.y = pc.at<cv::Vec3f>(i, j)[1];
+			_tem.z = pc.at<cv::Vec3f>(i, j)[2];
+			pt->push_back(_tem);
+		}
+
+	}
+}
+
+void cv_depth_2_pcl_cloud(std::string depth_file_name, cv::Mat intrinsicK, pcl::PointCloud<PointType>::Ptr out)
+{
+	IplImage *depth_in = loadDepth(depth_file_name);
+	cv::Mat depth = cv::cvarrToMat(depth_in);
+	
+	if (depth.depth() != CV_32F)
+	{
+		depth.convertTo(depth, CV_32F);
+	}
+	cv::Mat pc;
+	cv::rgbd::depthTo3d(depth, intrinsicK, pc);
+
+	cv_mat_cloud_to_pcl_cloud(pc, out);
+
+}
+
 
 double dot(const float* n1, const float* n2, const int dim)
 {

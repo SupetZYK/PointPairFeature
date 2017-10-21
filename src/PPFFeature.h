@@ -15,7 +15,7 @@ namespace zyk
 	{
 		int32_t first_index;
 		int32_t second_index;
-		PPFSignature ppf;
+		pcl::PPFSignature ppf;
 	};
 
 	struct PPF_Accumulator
@@ -35,8 +35,8 @@ namespace zyk
 
 	public:
 		//construct
-		bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<Normal>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane=false);
-		bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<Normal>::Ptr pointNormal, float angle_step, float distance_step,bool ignore_plane=false);
+		bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane=false);
+		bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step,bool ignore_plane=false);
 		void clear();
 		////////////////////
 		////// property access
@@ -51,7 +51,7 @@ namespace zyk
 		static float computeAlpha(const Eigen::Vector3f& first_pnt, const Eigen::Vector3f& first_normal, const Eigen::Vector3f& second_pnt);
 		static void computeSinglePPF(const PointType& first_pnt, const NormalType& first_normal, const PointType& second_pnt, const NormalType& second_normal, zyk::PPF& ppf);
 		static void computeSinglePPF(const Eigen::Vector3f& first_pnt, const Eigen::Vector3f& first_normal, const Eigen::Vector3f& second_pnt, const Eigen::Vector3f& second_normal,zyk::PPF& ppf);
-		static void computeSinglePPF(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<Normal>::Ptr pointNormal, int32_t index1, int32_t index2, PPF& ppf);
+		static void computeSinglePPF(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormalType, int32_t index1, int32_t index2, PPF& ppf);
 		static bool getPoseFromPPFCorresspondence(PointType& model_point, NormalType& model_normal, PointType& scene_point, NormalType&scene_normal, float alpha, Eigen::Affine3f& transformation);
 		//test speed
 		void getppfBoxCoord(PPF& ppf, Eigen::Vector4i& ijk);
@@ -67,7 +67,7 @@ namespace zyk
 		
 		
 		////////match
-		void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<Normal>::Ptr scene_normals, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
+		void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
 		///////USER IO
 		bool save(std::string file_name);
 		bool load(std::string fine_name);
@@ -101,7 +101,7 @@ namespace zyk
 
 		//ptr to data
 		pcl::PointCloud<PointType>::Ptr input_point_cloud;
-		pcl::PointCloud<Normal>::Ptr input_point_normal;
+		pcl::PointCloud<NormalType>::Ptr input_point_normal;
 		//grid property
 		int32_t grid_f1_div;
 		int32_t grid_f2_div;

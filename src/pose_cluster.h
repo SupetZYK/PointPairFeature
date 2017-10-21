@@ -1,6 +1,5 @@
-#include "common.h"
 #pragma once
-
+#include "common.h"
 namespace zyk
 {
 
@@ -27,8 +26,8 @@ namespace zyk
 
 		void checkDisAndRemove(int index,float thresh);
 
-		vector < Eigen::Affine3f, Eigen::aligned_allocator<Eigen::Affine3f> > transformations;
-		vector < int> voteLists;
+		std::vector < Eigen::Affine3f, Eigen::aligned_allocator<Eigen::Affine3f> > transformations;
+		std::vector < int> voteLists;
 		float vote_count = 0.0;
 	};
 

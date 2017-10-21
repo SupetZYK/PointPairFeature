@@ -3,8 +3,16 @@
 #include "PPFFeature.h"
 #include "pose_cluster.h"
 #include "SmartSampling.hpp"
+
+#include <pcl/console/parse.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/features/principal_curvatures.h>
+#include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/surface/mls.h>
+#include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
+using namespace pcl;
 std::string model_filename_;
 std::string save_filename_;
 
@@ -430,7 +438,7 @@ main(int argc, char *argv[])
 	//	arStore.Close();
 	//	fileStore.Close();
 	//}
-	
+	system("pause");
 
 	return 0;
 }
