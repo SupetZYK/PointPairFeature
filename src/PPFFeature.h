@@ -16,6 +16,7 @@ namespace zyk
 		int32_t first_index;
 		int32_t second_index;
 		pcl::PPFSignature ppf;
+		float weight = 1;
 	};
 
 	struct PPF_Accumulator
@@ -36,7 +37,7 @@ namespace zyk
 	public:
 		//construct
 		bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane=false);
-		bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step,bool ignore_plane=false);
+		//bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step,bool ignore_plane=false);
 		void clear();
 		////////////////////
 		////// property access
@@ -51,6 +52,7 @@ namespace zyk
 		static float computeAlpha(const Eigen::Vector3f& first_pnt, const Eigen::Vector3f& first_normal, const Eigen::Vector3f& second_pnt);
 		static void computeSinglePPF(const PointType& first_pnt, const NormalType& first_normal, const PointType& second_pnt, const NormalType& second_normal, zyk::PPF& ppf);
 		static void computeSinglePPF(const Eigen::Vector3f& first_pnt, const Eigen::Vector3f& first_normal, const Eigen::Vector3f& second_pnt, const Eigen::Vector3f& second_normal,zyk::PPF& ppf);
+		// for train only, in match step, use the above two.
 		static void computeSinglePPF(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormalType, int32_t index1, int32_t index2, PPF& ppf);
 		static bool getPoseFromPPFCorresspondence(PointType& model_point, NormalType& model_normal, PointType& scene_point, NormalType&scene_normal, float alpha, Eigen::Affine3f& transformation);
 		//test speed
@@ -156,6 +158,7 @@ void zyk::PPF_Space::save(Archive& ar, const unsigned int version)
 	{
 		ar & ppf_vector[i].first_index;
 		ar & ppf_vector[i].second_index;
+		ar & ppf_vector[i].weight;
 		ar & ppf_vector[i].ppf.alpha_m;
 		ar & ppf_vector[i].ppf.f1;
 		ar & ppf_vector[i].ppf.f2;
@@ -201,6 +204,7 @@ void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 	{
 		ar & ppf_vector[i].first_index;
 		ar & ppf_vector[i].second_index;
+		ar & ppf_vector[i].weight;
 		ar & ppf_vector[i].ppf.alpha_m;
 		ar & ppf_vector[i].ppf.f1;
 		ar & ppf_vector[i].ppf.f2;
@@ -231,11 +235,10 @@ void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 	total_box_num = grid_div_mul(3)*grid_f4_div;
 	assert(total_box_num > 0);
 
-	Eigen::Array4f dim = max_p - min_p;
-	leaf_size(0) = dim(0) / grid_f1_div;
-	leaf_size(1) = dim(1) / grid_f2_div;
-	leaf_size(2) = dim(2) / grid_f3_div;
-	leaf_size(3) = dim(3) / grid_f4_div;
+	leaf_size(0) = M_PI/ grid_f1_div;
+	leaf_size(1) = M_PI / grid_f2_div;
+	leaf_size(2) = M_PI / grid_f3_div;
+	leaf_size(3) = 1.1*max_p(3) / grid_f4_div;
 
 	inv_leaf_size(0) = 1 / leaf_size(0);
 	inv_leaf_size(1) = 1 / leaf_size(1);

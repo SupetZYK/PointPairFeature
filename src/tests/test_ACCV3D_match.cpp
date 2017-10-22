@@ -564,6 +564,8 @@ void test_ppf_feature_space:: match(pcl::PointCloud<PointType>::Ptr scene, pcl::
 
 	int32_t tst_cnt1 = 0;
 	int32_t tst_cnt2 = 0;
+	//vote flag
+	vector<int32_t>vote_flag(ppf_box_vector.size(), 0);
 	/////////////////////begin iterate boxes
 	for (int32_t box_index = 0; box_index < box_vector->size(); ++box_index)
 	{
@@ -606,6 +608,7 @@ void test_ppf_feature_space:: match(pcl::PointCloud<PointType>::Ptr scene, pcl::
 			const PointType& rp = scene->at(reference_pnt_index);
 			const NormalType& rn = scene_normals->at(reference_pnt_index);
 #endif
+			vote_flag.assign(ppf_vector.size(), 0);
 			// loop through neighboring boxes to get scene pnt
 			for (int32_t cnt2 = 0; cnt2 < neiboringBoxIndexVector.size(); ++cnt2)
 			{
@@ -647,6 +650,11 @@ void test_ppf_feature_space:: match(pcl::PointCloud<PointType>::Ptr scene, pcl::
 					zyk::box* current_ppf_box = ppf_box_vector.at(ppf_box_index);
 					if (current_ppf_box == NULL)
 						continue;
+					int32_t scene_rotation_discretized = floor((current_ppf.ppf.alpha_m + M_PI) / 2 / M_PI * 32);
+					if (vote_flag[ppf_box_index] & (1 << scene_rotation_discretized))
+						continue;
+					else
+						vote_flag[ppf_box_index] |= 1 << scene_rotation_discretized;
 					//now calculate alpha of current_ppf
 					double current_alpha = computeAlpha(rp, rn, sp);
 					//loop hash list

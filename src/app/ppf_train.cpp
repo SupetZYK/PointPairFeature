@@ -27,6 +27,7 @@ bool save_sampled_cloud_ (false);
 bool normal_reorient_switch_ (false);
 bool smart_sample_border_ (false);
 bool show_original_model_ (false);
+bool change_center_switch_(false);
 bool use_mls_ (false);
 float ang_thresh (1);
 float model_ss_ (3.0f);
@@ -47,6 +48,7 @@ void showHelp(char *filename)
 	std::cout << "     -w:						write the sampled model" << std::endl;
 	std::cout << "     --ply:					Use .poly as input cloud. Default is .pcd" << std::endl;
 	std::cout << "     --rn:					Reorient switch!" << std::endl;
+	std::cout << "     --cc:					Change Center switch!" << std::endl;
 	std::cout << "     --so:					show original model" << std::endl;
 	std::cout << "     --in:					Use existing normal files" << std::endl;
 	std::cout << "     --mls:					Use moving least squares" << std::endl;
@@ -98,6 +100,10 @@ void parseCommandLine(int argc, char *argv[])
 	if (pcl::console::find_switch(argc, argv, "--mls"))
 	{
 		use_mls_ = true;
+	}
+	if (pcl::console::find_switch(argc, argv, "--cc"))
+	{
+		change_center_switch_ = true;
 	}
 	//Model & scene filenames
 	std::vector<int> filenames;
@@ -265,9 +271,13 @@ main(int argc, char *argv[])
 				model_normals->points[i].normal_y = -normal_temp(1);
 				model_normals->points[i].normal_z = -normal_temp(2);
 			}
-			//model->points[i].x -= model_approximate_center(0);
-			//model->points[i].y -= model_approximate_center(1);
-			//model->points[i].z -= model_approximate_center(2);
+			if (change_center_switch_)
+			{
+				model->points[i].x -= model_approximate_center(0);
+				model->points[i].y -= model_approximate_center(1);
+				model->points[i].z -= model_approximate_center(2);
+			}
+
 		}
 	}
 
@@ -404,24 +414,26 @@ main(int argc, char *argv[])
 	cout << endl;
 
 
-	//
-	// if use smart sampling ,the resolution needs to be recalculated!
-	//
-	if (smart_sample_border_)
-	{
-		model_ss_ = static_cast<float> (computeCloudResolution(model, max_coord, min_coord));
-		cout << ">>Model smart sampled, then, recalculate resolution: " << model_ss_ << endl;
-	}
+	////
+	//// if use smart sampling ,the resolution needs to be recalculated!
+	////
+	//if (smart_sample_border_)
+	//{
+	//	model_ss_ = static_cast<float> (computeCloudResolution(keypoints, max_coord, min_coord));
+	//	cout << ">>Model smart sampled, then, recalculate resolution: " << model_ss_ << endl;
+	//}
 
 	//model ppf space
 	zyk::PPF_Space model_feature_space;
-	model_feature_space.init(keypoints, keyNormals, 0.2, float(model_ss_),true);
+	model_feature_space.init(keypoints, keyNormals, 3.1415/0.15, 1/0.05,true);
 	model_feature_space.model_size[0]=model_size[0];
 	model_feature_space.model_size[1]=model_size[1];
 	model_feature_space.model_size[2]=model_size[2];
 	model_feature_space.model_res = model_ss_;
+	cout << "Calculated model diameter is " << model_feature_space.getModelDiameter() << endl;
 	//
 	// compute no empty ppf box nunber
+	//
 	int32_t cnt = 0;
 	for (int32_t i = 0; i < model_feature_space.getBoxVector()->size(); ++i)
 	{
@@ -429,7 +441,7 @@ main(int argc, char *argv[])
 			cnt++;
 	}
 	cout << "no empty box number is: " << cnt << endl;
-	model_feature_space.save(save_filename_);
+	
 	//CFile fileStore;
 	//if (fileStore.Open(save_filename_.c_str(), CFile::modeWrite | CFile::modeCreate))
 	//{
@@ -439,6 +451,6 @@ main(int argc, char *argv[])
 	//	fileStore.Close();
 	//}
 	system("pause");
-
+	model_feature_space.save(save_filename_);
 	return 0;
 }
