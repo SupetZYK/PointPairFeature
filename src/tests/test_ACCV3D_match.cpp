@@ -26,6 +26,7 @@ bool show_correspondences_ (false);
 bool show_cluster_result_ (false);
 bool show_cluster_together_(false);
 bool use_cloud_resolution_ (false);
+bool two_ball_switch_  (false);
 //bool use_ply_filetype_ (false);
 //bool use_iss_(false);
 bool use_existing_normal_data_ (false);
@@ -34,7 +35,7 @@ bool use_mls_(false);
 //bool use_ppfs_file_  (false);
 //float model_ss_ (0.01f);
 float scene_ss_ (1.0f);
-float angle_thresh=M_PI/15;
+float angle_thresh = M_PI / 15;
 float cluster_dis_thresh = 0.2;
 float recopute_score_dis_thresh = 2;
 float recopute_score_ang_thresh = -1;
@@ -74,6 +75,7 @@ void showHelp (char *filename)
   std::cout << "     -r:                    Use the model cloud resolution and multiply to get scene sampling resolution" << std::endl;
   std::cout << "     --sc:                  Show cluster results" << std::endl;
   std::cout << "     --st:                  Show cluster results together, only when 'sc' is input" << std::endl;
+  std::cout << "     --tb:					Two ball switch" << std::endl;
   std::cout << "     --in:					Use existing normal files" << std::endl;
   std::cout << "     --mls:					Use moving least squares" << std::endl;
   std::cout << "     --sppf:				Spread discretized ppf" << std::endl;
@@ -132,6 +134,10 @@ void parseCommandLine (int argc, char *argv[])
   if (pcl::console::find_switch(argc, argv, "--sppf"))
   {
 	  spread_ppf_switch_ = true;
+  }
+  if (pcl::console::find_switch(argc, argv, "--tb"))
+  {
+	  two_ball_switch_ = true;
   }
 
 	std::vector<int> filenames;
@@ -396,7 +402,7 @@ main(int argc, char *argv[])
 	cout << ">recompute score angle thresh: " << recopute_score_ang_thresh << endl;
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
 	//model_feature_space.setScenePntsFlag(&scene_pnt_flag);
-	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
+	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, two_ball_switch_,relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
 	//
