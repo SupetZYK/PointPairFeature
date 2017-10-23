@@ -22,6 +22,7 @@ bool show_cluster_result_ (false);
 bool show_cluster_together_(false);
 bool use_cloud_resolution_ (false);
 bool spread_ppf_switch_ (false);
+bool two_ball_switch_ (false);
 //bool use_ply_filetype_ (false);
 //bool use_iss_(false);
 bool use_existing_normal_data_ (false);
@@ -60,6 +61,7 @@ void showHelp (char *filename)
   std::cout << "     --sc:                  Show cluster results" << std::endl;
   std::cout << "     --st:                  Show cluster results together, only when 'sc' is input" << std::endl;
   std::cout << "     --in:					Use existing normal files" << std::endl;
+  std::cout << "     --tb:					Two ball switch" << std::endl;
   std::cout << "     --sppf:				Spread discretized ppf" << std::endl;
   std::cout << "     --mls:					Use moving least squares" << std::endl;
   std::cout << "     --scene_ss val:        Scene uniform sampling radius (default 0.03)" << std::endl;
@@ -112,6 +114,10 @@ void parseCommandLine (int argc, char *argv[])
   if (pcl::console::find_switch(argc, argv, "--mls"))
   {
 	  use_mls_ = true;
+  }
+  if (pcl::console::find_switch(argc, argv, "--tb"))
+  {
+	  two_ball_switch_ = true;
   }
   if (pcl::console::find_switch(argc, argv, "--sppf"))
   {
@@ -351,7 +357,7 @@ main(int argc, char *argv[])
 	cout <<">recompute score distance thresh: " << recopute_score_dis_thresh << endl;
 	cout << ">recompute score angle thresh: " << recopute_score_ang_thresh << endl;
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
-	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
+	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, two_ball_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
 	//

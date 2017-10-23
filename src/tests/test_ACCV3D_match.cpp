@@ -29,6 +29,7 @@ bool use_cloud_resolution_ (false);
 //bool use_ply_filetype_ (false);
 //bool use_iss_(false);
 bool use_existing_normal_data_ (false);
+bool spread_ppf_switch_(false);
 bool use_mls_(false);
 //bool use_ppfs_file_  (false);
 //float model_ss_ (0.01f);
@@ -51,7 +52,7 @@ float curvature_radius_(2.0f);
 class test_ppf_feature_space :public zyk::PPF_Space
 {
 public:
-	void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
+	//void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
 	void setScenePntsFlag(vector<int>*flag_vec) { scene_pnt_flag = flag_vec; };
 protected:
 	vector<int>*scene_pnt_flag = NULL;
@@ -75,6 +76,7 @@ void showHelp (char *filename)
   std::cout << "     --st:                  Show cluster results together, only when 'sc' is input" << std::endl;
   std::cout << "     --in:					Use existing normal files" << std::endl;
   std::cout << "     --mls:					Use moving least squares" << std::endl;
+  std::cout << "     --sppf:				Spread discretized ppf" << std::endl;
   std::cout << "     --scene_ss val:        Scene uniform sampling radius (default 0.03)" << std::endl;
   std::cout << "     --angle_thresh val:    angle thresh when do ppf clustering" << std::endl;
   std::cout << "     --dis_thresh val:		first distance thresh(relative to radius)" << std::endl;
@@ -126,6 +128,10 @@ void parseCommandLine (int argc, char *argv[])
   if (pcl::console::find_switch(argc, argv, "--mls"))
   {
 	  use_mls_ = true;
+  }
+  if (pcl::console::find_switch(argc, argv, "--sppf"))
+  {
+	  spread_ppf_switch_ = true;
   }
 
 	std::vector<int> filenames;
@@ -390,7 +396,7 @@ main(int argc, char *argv[])
 	cout << ">recompute score angle thresh: " << recopute_score_ang_thresh << endl;
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
 	//model_feature_space.setScenePntsFlag(&scene_pnt_flag);
-	model_feature_space.match(scene_keypoints, scene_keyNormals, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
+	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
 	//
@@ -533,246 +539,3 @@ main(int argc, char *argv[])
 
 
 
-
-
-void test_ppf_feature_space:: match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<Normal>::Ptr scene_normals, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
-{
-	int scene_steps = floor(1.0 / relativeReferencePointsNumber);
-	if (scene_steps < 1)scene_steps = 1;
-
-	float model_diameter = max_p[3];
-	float box_radius = sqrt(model_size[0] * model_size[0] + model_size[1] * model_size[1] + model_size[2] * model_size[2]);
-	first_dis_thresh *= box_radius;
-	float second_dis_thresh = 0.5 * box_radius;
-	recompute_score_dis_thresh *= model_res;
-	//build grid to accelerate matching process
-	zyk::CVoxel_grid scene_grid(model_diameter, model_diameter, model_diameter, scene);
-	Eigen::Vector3i grid_div;
-	scene_grid.getGridDiv(grid_div);
-	vector<zyk::box*>*box_vector = scene_grid.getBox_vector();
-	Eigen::Vector3i div_mul(1, grid_div(0), grid_div(0)*grid_div(1));
-
-
-	int32_t num_poses_count = 0;
-	//all raw poses
-	vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> rawClusters;
-
-	///////// info
-	int32_t match_count = 0;
-	int32_t match_percent = 0;
-	int32_t info_step = 0.05*scene->size();
-
-	int32_t tst_cnt1 = 0;
-	int32_t tst_cnt2 = 0;
-	//vote flag
-	vector<int32_t>vote_flag(ppf_box_vector.size(), 0);
-	/////////////////////begin iterate boxes
-	for (int32_t box_index = 0; box_index < box_vector->size(); ++box_index)
-	{
-		/////////get box ptr
-		zyk::box*p_current_point_box = box_vector->at(box_index);
-		if (p_current_point_box == NULL)
-			continue;
-		/////////get neighboring
-		vector<int32_t>neiboringBoxIndexVector;
-		//for convenience, push back current index too!
-		neiboringBoxIndexVector.push_back(box_index);
-		zyk::getNeiboringBoxIndex3D(box_index, grid_div, neiboringBoxIndexVector);
-		bool success_flag = false;
-		for (int32_t cnt1 = 0; cnt1 < box_vector->at(box_index)->size(); cnt1+= (success_flag? scene_steps:1))
-		{
-			if ((match_count += (success_flag ? scene_steps : 1)) > info_step)
-			{
-				match_count = 0;
-				match_percent += 5;
-				cout << "Match : " << match_percent << "%." << endl;
-				//cout << "tst_cnt1: " << tst_cnt1 << endl;
-				//cout << "tst_cunt2: " << tst_cnt2 << endl;
-
-			}
-			success_flag = false;
-			int32_t reference_pnt_index = (*p_current_point_box)[cnt1];
-			//check if it is plane point
-			if (scene_pnt_flag != NULL) {
-				if (scene_pnt_flag->at(reference_pnt_index) == 1) {
-					continue;
-				}
-			}
-			/////////build an accumulator for this reference point
-			// in matlab the row size is size+1, why?
-			zyk::PPF_Accumulator acum(input_point_cloud->size(), 30);
-#ifdef use_eigen
-			const Eigen::Vector3f& rp = scene->at(reference_pnt_index).getVector3fMap();
-			const Eigen::Vector3f& rn = scene_normals->at(reference_pnt_index).getNormalVector3fMap();
-#else
-			const PointType& rp = scene->at(reference_pnt_index);
-			const NormalType& rn = scene_normals->at(reference_pnt_index);
-#endif
-			vote_flag.assign(ppf_vector.size(), 0);
-			// loop through neighboring boxes to get scene pnt
-			for (int32_t cnt2 = 0; cnt2 < neiboringBoxIndexVector.size(); ++cnt2)
-			{
-				int32_t neiboringBoxIndex = neiboringBoxIndexVector[cnt2];
-				zyk::box*p_current_neiboring_point_box = box_vector->at(neiboringBoxIndex);
-				if (p_current_neiboring_point_box == NULL)
-					continue;
-				for (int32_t cnt3 = 0; cnt3 < p_current_neiboring_point_box->size(); ++cnt3)
-				{
-					int32_t scene_pnt_index = (*p_current_neiboring_point_box)[cnt3];
-					if (scene_pnt_index == reference_pnt_index)
-						continue;
-#ifdef use_eigen
-					const Eigen::Vector3f& sp = scene->at(scene_pnt_index).getVector3fMap();
-					const Eigen::Vector3f& sn = scene_normals->at(scene_pnt_index).getNormalVector3fMap();
-#else
-					const PointType& sp = scene->at(scene_pnt_index);
-					const NormalType& sn = scene_normals->at(scene_pnt_index);
-#endif
-					if (neiboringBoxIndex != box_index)
-					{
-#ifdef use_eigen
-						if ((sp - rp).norm() > model_diameter)
-							continue;
-#else
-						if (dist(sp.data, rp.data, 3) > model_diameter)
-							continue;
-#endif
-					}
-					//calculate ppf
-					zyk::PPF current_ppf;
-					zyk::PPF_Space::computeSinglePPF(rp, rn, sp, sn, current_ppf);
-					if (abs(current_ppf.ppf.f3) < 0.02 && abs(current_ppf.ppf.f1 - M_PI_2) < 0.02&&abs(current_ppf.ppf.f2 - M_PI_2) < 0.02)
-						continue;
-					//do hash
-					int32_t ppf_box_index = getppfBoxIndex(current_ppf);
-					if (ppf_box_index == -1)
-						continue;
-					zyk::box* current_ppf_box = ppf_box_vector.at(ppf_box_index);
-					if (current_ppf_box == NULL)
-						continue;
-					int32_t scene_rotation_discretized = floor((current_ppf.ppf.alpha_m + M_PI) / 2 / M_PI * 32);
-					if (vote_flag[ppf_box_index] & (1 << scene_rotation_discretized))
-						continue;
-					else
-						vote_flag[ppf_box_index] |= 1 << scene_rotation_discretized;
-					//now calculate alpha of current_ppf
-					double current_alpha = computeAlpha(rp, rn, sp);
-					//loop hash list
-					for (int32_t node = 0; node < current_ppf_box->size(); ++node)
-					{
-						zyk::PPF& correspond_model_ppf = ppf_vector.at((*current_ppf_box)[node]);
-						float alpha = correspond_model_ppf.ppf.alpha_m - current_alpha;
-						if (alpha >= M_PI) alpha -= 2 * M_PI;
-						if (alpha < -M_PI)alpha += 2 * M_PI;
-						float alpha_bin = (alpha + M_PI) / 2 / M_PI * 30;
-						int32_t middle_bin = int(alpha_bin + 0.5f);
-						if (middle_bin >= 30) middle_bin = 0;
-						//calculate vote_val
-						//float tmp = cos(correspond_model_ppf.ppf.f3);
-						//if (1 - tmp < 0.003)
-						//{
-						//	continue;
-						//}
-						float vote_val = 1 - 0.98 * fabs(cos(correspond_model_ppf.ppf.f3));
-						acum.acumulator(correspond_model_ppf.first_index, middle_bin) += vote_val;
-						tst_cnt2++;
-					}
-
-				}
-
-			}
-			//check the accumulator and extract poses
-			Eigen::MatrixXi::Index maxRow, maxCol;
-			float maxVote = acum.acumulator.maxCoeff(&maxRow, &maxCol);
-			//if (max_vote_thresh > 0){
-			if (maxVote < max_vote_thresh)
-				continue;
-			//}
-			float vote_thresh = max_vote_percentage*maxVote;
-
-			//visit the accumulator and extract poses
-			for (int32_t row = 0; row < acum.acumulator.rows(); ++row)
-			{
-				for (int32_t col = 0; col < acum.acumulator.cols(); ++col)
-				{
-					if (acum.acumulator(row, col) < vote_thresh)
-						continue;
-					num_poses_count++;
-					tst_cnt1++;
-					float alpha = col / 30.0 * 2 * M_PI - M_PI;
-					Eigen::Affine3f transformation;
-					if (!zyk::PPF_Space::getPoseFromPPFCorresspondence(input_point_cloud->at(row), input_point_normal->at(row), scene->at(reference_pnt_index), scene_normals->at(reference_pnt_index), alpha, transformation))
-						continue;
-					rawClusters.push_back(zyk::pose_cluster(transformation, acum.acumulator(row, col)));
-				}
-			}//end of visit accumulator
-			success_flag = true;
-		}
-
-	}
-	std::sort(rawClusters.begin(), rawClusters.end(), zyk::pose_cluster_comp);
-	cout << "all poses number : " << rawClusters.size() << endl;
-	////////////Now do clustering
-	// raw cluster first
-	for (int32_t i = 0; i < rawClusters.size(); i++)
-	{
-		int result = 0;
-		for (int32_t j = 0; j < pose_clusters.size(); j++)
-		{
-			if (pose_clusters[j].checkAndPutIn(rawClusters[i].transformations[0], rawClusters[i].vote_count, first_dis_thresh, angle_thresh))
-			{
-				//if(++result>=max_clusters_per_pose_can_be_in)
-				result = 1;
-				break;
-			}
-		}
-		if (!result)
-			pose_clusters.push_back(rawClusters[i]);
-	}
-	std::sort(pose_clusters.begin(), pose_clusters.end(), zyk::pose_cluster_comp);
-
-	//////recompute score
-	if (recompute_score_dis_thresh > 0)
-	{
-		cout << "Now recompute scores, distance thresh is: " << recompute_score_dis_thresh << endl;
-		recomputeClusterScore(scene_grid, *scene_normals, recompute_score_dis_thresh, recompute_score_ang_thresh, pose_clusters);
-		std::sort(pose_clusters.begin(), pose_clusters.end(), zyk::pose_cluster_comp);
-	}
-
-	// second cluster by distance
-	// group those clear clusters together and rank them
-	if (num_clusters_per_group > 0) {
-		cout << "Now do grouping, number of clusters per group is : " << num_clusters_per_group << endl;
-		vector<vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>> groups;
-		for (int32_t i = 0; i < pose_clusters.size(); i++)
-		{
-			int result = 0;
-			for (int32_t j = 0; j < groups.size(); j++)
-			{
-				if ((groups[j][0].mean_trans - pose_clusters[i].mean_trans).norm() < second_dis_thresh)
-				{
-					groups[j].push_back(pose_clusters[i]);
-					result = 1;
-					break;
-				}
-			}
-			if (!result)
-			{
-				vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> tmp_clusters;
-				tmp_clusters.push_back(pose_clusters[i]);
-				groups.push_back(tmp_clusters);
-			}
-		}
-
-		cout << "group size is: " << groups.size() << endl;
-		pose_clusters.clear();
-		for (int i = 0; i < groups.size(); i++)
-		{
-			for (int j = 0; j < min(num_clusters_per_group, int(groups[i].size())); ++j)
-			{
-				pose_clusters.push_back(groups[i][j]);
-			}
-
-		}
-	}
-}

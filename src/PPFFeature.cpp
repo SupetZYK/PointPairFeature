@@ -537,19 +537,23 @@ void zyk::PPF_Space::getNeighboringPPFBoxIndex(int currentIndex, vector<int>&out
 
 
 
-void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
+void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
 {
 	int scene_steps = floor(1.0 / relativeReferencePointsNumber);
 	if (scene_steps < 1)scene_steps = 1;
 
-	float radius = max_p[3];
+	float diameter = max_p[3];
+	//use Going further with ppf's two ball voting scheme
+	float small_diameter = 0.8*diameter;
+	if (small_diameter > model_size[1])
+		small_diameter = model_size[1];
 	float box_radius = sqrt(model_size[0] * model_size[0] + model_size[1] * model_size[1] + model_size[2] * model_size[2]);
 	first_dis_thresh *= box_radius;
 	float second_dis_thresh = 0.5 * box_radius;
 	cout << "Second distance thresh is(This by now cannot be customized!): " << second_dis_thresh << endl;
 	recompute_score_dis_thresh *= model_res;
 	//build grid to accelerate matching process
-	zyk::CVoxel_grid scene_grid(radius, radius, radius, scene);
+	zyk::CVoxel_grid scene_grid(diameter, diameter, diameter, scene);
 	Eigen::Vector3i grid_div;
 	scene_grid.getGridDiv(grid_div);
 	vector<zyk::box*>*box_vector = scene_grid.getBox_vector();
@@ -602,7 +606,8 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 			int32_t reference_pnt_index = (*p_current_point_box)[cnt1];
 			/////////build an accumulator for this reference point
 			// in matlab the row size is size+1, why?
-			zyk::PPF_Accumulator acum(input_point_cloud->size(), 30);
+			zyk::PPF_Accumulator small_acum(input_point_cloud->size(), 30);
+			zyk::PPF_Accumulator big_acum(input_point_cloud->size(), 30);
 #ifdef use_eigen
 			const Eigen::Vector3f& rp = scene->at(reference_pnt_index).getVector3fMap();
 			const Eigen::Vector3f& rn = scene_normals->at(reference_pnt_index).getNormalVector3fMap();
@@ -626,17 +631,20 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 #ifdef use_eigen
 					const Eigen::Vector3f& sp = scene->at(scene_pnt_index).getVector3fMap();
 					const Eigen::Vector3f& sn = scene_normals->at(scene_pnt_index).getNormalVector3fMap();
+					float distance = (sp-rp).norm();
 #else
 					const PointType& sp = scene->at(scene_pnt_index);
 					const NormalType& sn = scene_normals->at(scene_pnt_index);
+					float distance = dist(sp.data, rp.data, 3);
 #endif
+					
 					if (neiboringBoxIndex != box_index)
 					{
 #ifdef use_eigen
-						if ((sp - rp).norm() > radius)
+						if ((sp - rp).norm() > diameter)
 							continue;
 #else
-						if (dist(sp.data, rp.data, 3)>radius)
+						if (distance>diameter)
 							continue;
 #endif
 					}
@@ -683,7 +691,17 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 							//	continue;
 							//}
 							//float vote_val = 1 - 0.98 * fabs(cos(correspond_model_ppf.ppf.f3));
-							acum.acumulator(correspond_model_ppf.first_index, middle_bin) += correspond_model_ppf.weight;
+							if (two_ball_switch) {
+								if (distance < small_diameter)
+									small_acum.acumulator(correspond_model_ppf.first_index, middle_bin) += correspond_model_ppf.weight;
+								else
+									big_acum.acumulator(correspond_model_ppf.first_index, middle_bin) += correspond_model_ppf.weight;
+							}
+							else
+							{
+								small_acum.acumulator(correspond_model_ppf.first_index, middle_bin) += correspond_model_ppf.weight;
+							}
+
 							tst_cnt2++;
 						}
 
@@ -695,27 +713,46 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 			}
 			//check the accumulator and extract poses
 			Eigen::MatrixXi::Index maxRow, maxCol;
-			float maxVote = acum.acumulator.maxCoeff(&maxRow, &maxCol);
+			float maxVote_small = small_acum.acumulator.maxCoeff(&maxRow, &maxCol);
+			float maxVote_big = 0;
+			if (two_ball_switch) {
+				big_acum.acumulator += small_acum.acumulator;
+				maxVote_big = big_acum.acumulator.maxCoeff(&maxRow, &maxCol);
+			}
 			//if (max_vote_thresh > 0){
-			if (maxVote < max_vote_thresh)
+			if (maxVote_small < max_vote_thresh)
 				continue;
 			//}
-			float vote_thresh = max_vote_percentage*maxVote;
-
+			float vote_thresh_small = max_vote_percentage*maxVote_small;
+			float vote_thresh_big = max_vote_percentage*maxVote_big;
 			//visit the accumulator and extract poses
-			for (int32_t row = 0; row < acum.acumulator.rows(); ++row)
+			for (int32_t row = 0; row < small_acum.acumulator.rows(); ++row)
 			{
-				for (int32_t col = 0; col < acum.acumulator.cols(); ++col)
+				for (int32_t col = 0; col < small_acum.acumulator.cols(); ++col)
 				{
-					if (acum.acumulator(row, col) < vote_thresh)
-						continue;
-					num_poses_count++;
-					tst_cnt1++;
-					float alpha = col / 30.0 * 2 * M_PI - M_PI;
-					Eigen::Affine3f transformation;
-					if (!zyk::PPF_Space::getPoseFromPPFCorresspondence(input_point_cloud->at(row), input_point_normal->at(row), scene->at(reference_pnt_index), scene_normals->at(reference_pnt_index), alpha, transformation))
-						continue;
-					rawClusters.push_back(zyk::pose_cluster(transformation, acum.acumulator(row, col)));
+					if (small_acum.acumulator(row, col) > vote_thresh_small)
+					{
+						num_poses_count++;
+						tst_cnt1++;
+						float alpha = col / 30.0 * 2 * M_PI - M_PI;
+						Eigen::Affine3f transformation;
+						if (zyk::PPF_Space::getPoseFromPPFCorresspondence(input_point_cloud->at(row), input_point_normal->at(row), scene->at(reference_pnt_index), scene_normals->at(reference_pnt_index), alpha, transformation)) {
+							rawClusters.push_back(zyk::pose_cluster(transformation, small_acum.acumulator(row, col)));
+							continue;
+						}
+
+					}
+					if (two_ball_switch&&big_acum.acumulator(row, col) > vote_thresh_big)
+					{
+						num_poses_count++;
+						tst_cnt1++;
+						float alpha = col / 30.0 * 2 * M_PI - M_PI;
+						Eigen::Affine3f transformation;
+						if (zyk::PPF_Space::getPoseFromPPFCorresspondence(input_point_cloud->at(row), input_point_normal->at(row), scene->at(reference_pnt_index), scene_normals->at(reference_pnt_index), alpha, transformation)) {
+							rawClusters.push_back(zyk::pose_cluster(transformation, small_acum.acumulator(row, col)));
+						}
+					}
+					
 				}
 			}//end of visit accumulator
 
