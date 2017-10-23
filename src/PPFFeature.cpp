@@ -436,6 +436,42 @@ int32_t zyk::PPF_Space::getppfBoxIndex(PPF& ppf)
 	return i;
 }
 
+void zyk::PPF_Space::getNeighboringPPFBoxIndex(int currentIndex, vector<int>&out_vec)
+{
+	int x3 = currentIndex / grid_div_mul(3);
+	currentIndex -= x3*grid_div_mul(3);
+	int x2 = currentIndex / grid_div_mul(2);
+	currentIndex -= x2*grid_div_mul(2);
+	int x1 = currentIndex / grid_div_mul(1);
+	currentIndex -= x1*grid_div_mul(1);
+	int x0 = currentIndex;
+
+	Eigen::Vector4i coord(x0, x1, x2, x3);
+	for (int i = -1; i < 2; ++i)
+	{
+		if (x0 + i < 0 || x0 + i >= grid_f1_div)
+			continue;
+		for (int j = -1; j < 2; ++j)
+		{
+			if (x1 + j < 0 || x1 + j >= grid_f2_div)
+				continue;
+			for (int k = -1; k < 2; ++k)
+			{
+				if (x2 + k < 0 || x2 + k >= grid_f3_div)
+					continue;
+				for (int l = -1; l < 2; ++l)
+				{
+					if (x3 + l < 0 || x3 + l >= grid_f4_div)
+						continue;
+					out_vec.push_back((coord + Eigen::Vector4i(i, j, k, l)).dot(grid_div_mul));
+
+				}
+			}
+		}
+	}
+
+}
+
 //void zyk::PPF_Space::Serialize(CArchive &ar)
 //{
 //	CObject::Serialize(ar);
@@ -501,7 +537,7 @@ int32_t zyk::PPF_Space::getppfBoxIndex(PPF& ppf)
 
 
 
-void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
+void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
 {
 	int scene_steps = floor(1.0 / relativeReferencePointsNumber);
 	if (scene_steps < 1)scene_steps = 1;
@@ -533,6 +569,11 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 	int32_t tst_cnt2 = 0;
 	///////// vote flag, See Going further with ppf
 	vector<int32_t>vote_flag(ppf_box_vector.size(), 0);
+	//init some vectors before loop
+	vector<int32_t>neiboringBoxIndexVector;
+	neiboringBoxIndexVector.reserve(50);
+	vector<int32_t>neighboring_ppf_box_index_vec;
+	neighboring_ppf_box_index_vec.reserve(100);
 	/////////////////////begin iterate boxes
 	for (int32_t box_index = 0; box_index < box_vector->size(); ++box_index)
 	{
@@ -541,7 +582,7 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 		if (p_current_point_box == NULL)
 			continue;
 		/////////get neighboring
-		vector<int32_t>neiboringBoxIndexVector;
+		neiboringBoxIndexVector.clear();
 		//for convenience, push back current index too!
 		neiboringBoxIndexVector.push_back(box_index);
 		zyk::getNeiboringBoxIndex3D(box_index, grid_div, neiboringBoxIndexVector);
@@ -608,9 +649,6 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 					int32_t ppf_box_index = getppfBoxIndex(current_ppf);
 					if (ppf_box_index == -1)
 						continue;
-					zyk::box* current_ppf_box = ppf_box_vector.at(ppf_box_index);
-					if (current_ppf_box == NULL)
-						continue;
 					//Check and set flag
 					int scene_rotation_discretized = floor((current_ppf.ppf.alpha_m + M_PI) / 2 / M_PI * 32);
 					if (vote_flag[ppf_box_index] & (1 << scene_rotation_discretized))
@@ -618,27 +656,39 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 					else
 						vote_flag[ppf_box_index] |= 1 << scene_rotation_discretized;
 					//now calculate alpha of current_ppf
-					double current_alpha= computeAlpha(rp, rn, sp);
-					//loop hash list
-					for (int32_t node = 0; node < current_ppf_box->size(); ++node)
+					double current_alpha = computeAlpha(rp, rn, sp);
+					neighboring_ppf_box_index_vec.clear();
+					neighboring_ppf_box_index_vec.push_back(ppf_box_index);
+					if(spread_ppf_switch)
+						getNeighboringPPFBoxIndex(ppf_box_index, neighboring_ppf_box_index_vec);
+					for (int cnt4 = 0; cnt4 < neighboring_ppf_box_index_vec.size(); ++cnt4)
 					{
-						zyk::PPF& correspond_model_ppf = ppf_vector.at((*current_ppf_box)[node]);
-						float alpha = correspond_model_ppf.ppf.alpha_m - current_alpha;
-						if (alpha >= M_PI) alpha -= 2 * M_PI;
-						if (alpha < -M_PI)alpha += 2 * M_PI;
-						float alpha_bin = (alpha + M_PI) / 2 / M_PI * 30;
-						int32_t middle_bin = int(alpha_bin + 0.5f);
-						if (middle_bin >= 30) middle_bin = 0;
-						//calculate vote_val
-						//float tmp = cos(correspond_model_ppf.ppf.f3);
-						//if (1 - tmp < 0.003)
-						//{
-						//	continue;
-						//}
-						//float vote_val = 1 - 0.98 * fabs(cos(correspond_model_ppf.ppf.f3));
-						acum.acumulator(correspond_model_ppf.first_index, middle_bin) += correspond_model_ppf.weight;
-						tst_cnt2++;
+						zyk::box* current_ppf_box = ppf_box_vector.at(neighboring_ppf_box_index_vec[cnt4]);
+						if (current_ppf_box == NULL)
+							continue;
+						//loop hash list
+						for (int32_t node = 0; node < current_ppf_box->size(); ++node)
+						{
+							zyk::PPF& correspond_model_ppf = ppf_vector.at((*current_ppf_box)[node]);
+							float alpha = correspond_model_ppf.ppf.alpha_m - current_alpha;
+							if (alpha >= M_PI) alpha -= 2 * M_PI;
+							if (alpha < -M_PI)alpha += 2 * M_PI;
+							float alpha_bin = (alpha + M_PI) / 2 / M_PI * 30;
+							int32_t middle_bin = int(alpha_bin + 0.5f);
+							if (middle_bin >= 30) middle_bin = 0;
+							//calculate vote_val
+							//float tmp = cos(correspond_model_ppf.ppf.f3);
+							//if (1 - tmp < 0.003)
+							//{
+							//	continue;
+							//}
+							//float vote_val = 1 - 0.98 * fabs(cos(correspond_model_ppf.ppf.f3));
+							acum.acumulator(correspond_model_ppf.first_index, middle_bin) += correspond_model_ppf.weight;
+							tst_cnt2++;
+						}
+
 					}
+					
 
 				}
 

@@ -62,6 +62,8 @@ namespace zyk
 		vector<box*>* getBoxVector() { return &ppf_box_vector; };
 		vector<PPF>* getPPFVector() { return &ppf_vector; };
 
+		//in order to spread discretized ppf, use this to get neighboring ppf box
+		void getNeighboringPPFBoxIndex(int currentIndex,vector<int>&out_vec);
 		void getPointCloud(pcl::PointCloud<PointType>::Ptr&pointcloud){ pointcloud = input_point_cloud; };
 		void getPointNormalCloud(pcl::PointCloud<NormalType>::Ptr&pointNormals){ pointNormals = input_point_normal; };
 
@@ -69,7 +71,7 @@ namespace zyk
 		
 		
 		////////match
-		void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
+		void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, bool spread_ppf_switch, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
 		///////USER IO
 		bool save(std::string file_name);
 		bool load(std::string fine_name);
