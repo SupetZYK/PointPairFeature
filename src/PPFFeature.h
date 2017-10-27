@@ -69,6 +69,7 @@ namespace zyk
 
 		friend class boost::serialization::access;
 		
+		float computeClusterScore(pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, zyk::pose_cluster &pose_clusters);
 		
 		////////match
 		void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
@@ -102,6 +103,8 @@ namespace zyk
 		////////////////////
 		//////basic property
 		////////////////////
+		//for fast scene point access
+		CVoxel_grid scene_grid;
 
 		//ptr to data
 		pcl::PointCloud<PointType>::Ptr input_point_cloud;

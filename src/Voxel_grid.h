@@ -9,9 +9,10 @@ namespace zyk
 	class ZYK_EXPORTS CVoxel_grid
 	{
 	public:
-		//为了简化，只提供两种构造方法
-		CVoxel_grid(int32_t x_div, int32_t y_div, int32_t z_div, pcl::PointCloud<PointType>::Ptr pntcloud);
-		CVoxel_grid(float leaf_size_x, float leaf_size_y, float leaf_size_z, pcl::PointCloud<PointType>::Ptr pntcloud);
+		//
+		CVoxel_grid() {};
+		void Init(int32_t x_div, int32_t y_div, int32_t z_div, pcl::PointCloud<PointType>::Ptr pntcloud);
+		void Init(float leaf_size_x, float leaf_size_y, float leaf_size_z, pcl::PointCloud<PointType>::Ptr pntcloud);
 		~CVoxel_grid();
 
 
@@ -37,6 +38,7 @@ namespace zyk
 		int32_t getTotalBoxNum();
 
 		pcl::PointCloud<PointType>::Ptr getInputPointCloud(){ return input_point_cloud; };
+		void setInputPointCloud(pcl::PointCloud<PointType>::Ptr pc) { input_point_cloud = pc; };
 	private:
 		///////////////////////////////////////////
 		//////////////基本属性/////////////////////

@@ -428,9 +428,13 @@ main(int argc, char *argv[])
 	{
 		if (true_cluster.checkAndPutIn_test_ver(pose_clusters[i].mean_transformation, pose_clusters[i].vote_count, dis_thresh, 0.3))
 			cout << "clusters info" << endl << "num trans: " << pose_clusters[i].size() << endl << "num votes: " << pose_clusters[i].vote_count << endl;
-
 	}
+	//calc true clusters score according to current method
 	cout << "true clusters size: " << true_cluster.size() << endl;
+	float tmp = recopute_score_dis_thresh*model_feature_space.model_res;
+	cout << "tst tmp: " << tmp << endl;
+	float true_score = model_feature_space.computeClusterScore(*scene_keyNormals, tmp,recopute_score_ang_thresh, true_cluster);
+	cout << "true cluster score is: " << true_score << endl;
 	for (int i = 0; i < true_cluster.size(); ++i)
 	{
 		cout << true_cluster.transformations[i].matrix() << endl;

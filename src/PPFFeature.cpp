@@ -472,6 +472,64 @@ void zyk::PPF_Space::getNeighboringPPFBoxIndex(int currentIndex, vector<int>&out
 
 }
 
+float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, zyk::pose_cluster &pose_clusters)
+{
+	pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
+	pcl::PointCloud<NormalType>::Ptr rotated_normal(new pcl::PointCloud<NormalType>());
+	pcl::PointCloud<PointType>::Ptr scene = scene_grid.getInputPointCloud();
+
+	scene_grid.resplit(dis_thresh, dis_thresh, dis_thresh);
+	Eigen::Vector3i grid_div;
+	scene_grid.getGridDiv(grid_div);
+	vector<zyk::box*>* box_vector = scene_grid.getBox_vector();
+	if (ang_thresh < 0)ang_thresh = M_PI_2;
+	float cos_ang_thresh = cos(ang_thresh);
+
+	float score = 0;
+	pcl::transformPointCloud(*input_point_cloud, *rotated_model, pose_clusters.mean_transformation);
+	transformNormals(*input_point_normal, *rotated_normal, pose_clusters.mean_transformation);
+	for (int32_t i = 0; i < rotated_model->size(); ++i)
+	{
+		int32_t pnt_box_index = scene_grid.getPntBoxIndex(rotated_model->at(i));
+		if (pnt_box_index == -1)continue;
+		//zyk::box* p_box = box_vector->at(pnt_box_index);
+		//if (p_box == NULL)continue;
+		PointType mp = rotated_model->at(i);
+		NormalType mn = rotated_normal->at(i);
+
+		/////////get neighboring
+		vector<int32_t>neiboringBoxIndexVector;
+		neiboringBoxIndexVector.reserve(30);
+		//for convenience, push back current index too!
+		neiboringBoxIndexVector.push_back(pnt_box_index);
+		zyk::getNeiboringBoxIndex3D(pnt_box_index, grid_div, neiboringBoxIndexVector);
+
+		bool found = false;
+		for (int j = 0; j < neiboringBoxIndexVector.size() && !found; ++j)
+		{
+			int neiboringBoxIndex = neiboringBoxIndexVector[j];
+			zyk::box*p_current_neiboring_point_box = box_vector->at(neiboringBoxIndex);
+			if (p_current_neiboring_point_box == NULL)
+				continue;
+			for (int k = 0; k < p_current_neiboring_point_box->size(); ++k)
+			{
+				PointType sp = scene->at((*p_current_neiboring_point_box)[k]);
+				NormalType sn = scene_normals.at((*p_current_neiboring_point_box)[k]);
+				if (fabs(mp.x - sp.x) + fabs(mp.y - sp.y) + fabs(mp.z - sp.z) < dis_thresh)
+				{
+					if (dot(mn.normal, sn.normal, 3) > cos_ang_thresh) {
+						score = score + 1;
+						found = true;
+						break;
+					}
+				}
+			}
+		}
+
+	}
+	return score/ input_point_cloud->size();
+}
+
 //void zyk::PPF_Space::Serialize(CArchive &ar)
 //{
 //	CObject::Serialize(ar);
@@ -553,7 +611,7 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 	cout << "Second distance thresh is(This by now cannot be customized!): " << second_dis_thresh << endl;
 	recompute_score_dis_thresh *= model_res;
 	//build grid to accelerate matching process
-	zyk::CVoxel_grid scene_grid(diameter, diameter, diameter, scene);
+	scene_grid.Init(diameter, diameter, diameter, scene);
 	Eigen::Vector3i grid_div;
 	scene_grid.getGridDiv(grid_div);
 	vector<zyk::box*>*box_vector = scene_grid.getBox_vector();

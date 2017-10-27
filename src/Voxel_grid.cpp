@@ -1,6 +1,6 @@
 #include "Voxel_grid.h"
 
-zyk::CVoxel_grid::CVoxel_grid(int32_t x_div, int32_t y_div, int32_t z_div, pcl::PointCloud<PointType>::Ptr pntcloud)
+void zyk::CVoxel_grid::Init(int32_t x_div, int32_t y_div, int32_t z_div, pcl::PointCloud<PointType>::Ptr pntcloud)
 {
 	assert(x_div >= 1 && y_div >= 1 && z_div >= 1);
 	grid_x_div = x_div;
@@ -27,7 +27,7 @@ zyk::CVoxel_grid::CVoxel_grid(int32_t x_div, int32_t y_div, int32_t z_div, pcl::
 	constructGrid();
 }
 
-zyk::CVoxel_grid::CVoxel_grid(float leaf_size_x, float leaf_size_y, float leaf_size_z, pcl::PointCloud<PointType>::Ptr pntcloud)
+void zyk::CVoxel_grid::Init(float leaf_size_x, float leaf_size_y, float leaf_size_z, pcl::PointCloud<PointType>::Ptr pntcloud)
 {
 	assert(leaf_size_x > 0 && leaf_size_y > 0 && leaf_size_z > 0);
 	//ÉèÖÃµãÔÆ
@@ -60,6 +60,11 @@ zyk::CVoxel_grid::CVoxel_grid(float leaf_size_x, float leaf_size_y, float leaf_s
 void zyk::CVoxel_grid::resplit(float leaf_size_x, float leaf_size_y, float leaf_size_z)
 {
 	assert(leaf_size_x > 0 && leaf_size_y > 0 && leaf_size_z > 0);
+	if (abs(leaf_size_x - leaf_size(0)) / leaf_size(0) < 0.05 && abs(leaf_size_y - leaf_size(1)) / leaf_size(1) < 0.05 && abs(leaf_size_z - leaf_size(2)) / leaf_size(2) < 0.05)
+	{
+		cout << "No need to resplit grid!" << endl;
+		return;
+	}
 	Eigen::Array3f dim = max_p - min_p;
 	grid_x_div = ceil(dim(0) / leaf_size_x);
 	grid_y_div = ceil(dim(1) / leaf_size_y);

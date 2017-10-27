@@ -33,6 +33,8 @@ float ang_thresh (1);
 float model_ss_ (3.0f);
 float plane_ss_ (3.0f);
 float curvature_radius_(2.0f);
+int angle_div_ (15);
+int distance_div_ (20);
 void showHelp(char *filename)
 {
 	std::cout << std::endl;
@@ -56,6 +58,9 @@ void showHelp(char *filename)
 	std::cout << "     --model_ss val:			Model uniform sampling radius (default 3)" << std::endl;
 	std::cout << "     --plane_ss val:			Model plane feature uniform sampling radius, if not set, default same as model" << std::endl;
 	std::cout << "     --curv_r val:			curvature radius" << std::endl;
+	std::cout << "     --a_div val:				angle division" << std::endl;
+	std::cout << "     --d_div val:				distance division" << std::endl;
+
 
 }
 
@@ -127,7 +132,8 @@ void parseCommandLine(int argc, char *argv[])
 	pcl::console::parse_argument(argc, argv, "--plane_ss", plane_ss_);
 	pcl::console::parse_argument(argc, argv, "--curv_r", curvature_radius_);
 	pcl::console::parse_argument(argc, argv, "--sp", ang_thresh);
-
+	pcl::console::parse_argument(argc, argv, "--a_div", angle_div_);
+	pcl::console::parse_argument(argc, argv, "--d_div", distance_div_);
 
 }
 
@@ -425,7 +431,8 @@ main(int argc, char *argv[])
 
 	//model ppf space
 	zyk::PPF_Space model_feature_space;
-	model_feature_space.init(keypoints, keyNormals, 3.1415/0.15, 1/0.05,true);
+	cout << "trained using angle_div , distance_div: " << angle_div_ << ", " << distance_div_ << endl;
+	model_feature_space.init(keypoints, keyNormals, angle_div_ , distance_div_,true);
 	model_feature_space.model_size[0]=model_size[0];
 	model_feature_space.model_size[1]=model_size[1];
 	model_feature_space.model_size[2]=model_size[2];
@@ -450,7 +457,7 @@ main(int argc, char *argv[])
 	//	arStore.Close();
 	//	fileStore.Close();
 	//}
-	system("pause");
+	getchar();
 	model_feature_space.save(save_filename_);
 	return 0;
 }
