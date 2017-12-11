@@ -11,8 +11,6 @@ namespace zyk
 		//¸¨Öú
 		Eigen::Vector3f mean_rot, mean_trans, first_trans, first_axis;
 		float first_angle;
-		
-
 	public:
 		//pose_cluster(){};
 	  pose_cluster(const Eigen::Affine3f& transformation, float vote){ checkAndPutIn(transformation, vote, 100, 100); };

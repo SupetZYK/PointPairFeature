@@ -22,27 +22,25 @@ namespace zyk
 	struct PPF_Accumulator
 	{
 		PPF_Accumulator(int32_t pnt_number, int32_t rot_angle_div){ acumulator = Eigen::MatrixXf(pnt_number, rot_angle_div); acumulator.setConstant(0); };
-
 		Eigen::MatrixXf acumulator;
 	};
 
 	class ZYK_EXPORTS PPF_Space
 	{
-
-
 	public:
 		PPF_Space();
 		~PPF_Space();
-
 	public:
 		//construct
-		bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane=false);
+		bool init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane=false);
 		//bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step,bool ignore_plane=false);
 		void clear();
 		////////////////////
 		////// property access
 		////////////////////
-		const double getModelDiameter() const { return max_p[3]; };
+		const string getName() const { return mName; };
+		const double getMaxD() const { return max_p[3]; };
+		const double getSampleRatio() const { return model_res / (norm(model_size, 3)); };
 	public:
 		////////////////////
 		//////methods
@@ -72,7 +70,7 @@ namespace zyk
 		float computeClusterScore(pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, zyk::pose_cluster &pose_clusters);
 		
 		////////match
-		void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
+		void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& pose_clusters);
 		///////USER IO
 		bool save(std::string file_name);
 		bool load(std::string fine_name);
@@ -80,12 +78,14 @@ namespace zyk
 		//bool model_x_centrosymmetric = false;
 		//bool model_y_centrosymmetric = false;
 		//bool model_z_centrosymmetric = false;
+
 		//
 		//model property
 		//
 		float model_size[3];
 		float model_res;
 		bool ignore_plane_switch = false;
+
 	protected:
 		///////////////IO
 		template<class Archive>
@@ -103,6 +103,7 @@ namespace zyk
 		////////////////////
 		//////basic property
 		////////////////////
+		std::string mName;
 		//for fast scene point access
 		CVoxel_grid scene_grid;
 
@@ -141,6 +142,7 @@ namespace zyk
 template<class Archive>
 void zyk::PPF_Space::save(Archive& ar, const unsigned int version)
 {
+	ar & mName;
 	ar & grid_f1_div;
 	ar & grid_f2_div;
 	ar & grid_f3_div;
@@ -187,6 +189,7 @@ template<class Archive>
 void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 {
 	int32_t ppf_vector_size = 0;
+	ar & mName;
 	ar & grid_f1_div;
 	ar & grid_f2_div;
 	ar & grid_f3_div;

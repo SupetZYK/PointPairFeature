@@ -20,7 +20,6 @@ bool show_keypoints_ (false);
 bool show_correspondences_ (false);
 bool show_cluster_result_ (false);
 bool show_cluster_together_(false);
-bool use_cloud_resolution_ (false);
 bool spread_ppf_switch_ (false);
 bool two_ball_switch_ (false);
 //bool use_ply_filetype_ (false);
@@ -29,7 +28,7 @@ bool use_existing_normal_data_ (false);
 bool use_mls_(false);
 //bool use_ppfs_file_  (false);
 //float model_ss_ (0.01f);
-float scene_ss_ (1.0f);
+float scene_ds_(-1.0f);
 float angle_thresh=M_PI/15;
 float cluster_dis_thresh = 0.2;
 float recopute_score_dis_thresh = 2;
@@ -57,14 +56,13 @@ void showHelp (char *filename)
   std::cout << "     -h:                    Show this help." << std::endl;
   std::cout << "     -k:                    Show used keypoints." << std::endl;
   std::cout << "     -c:                    Show used correspondences." << std::endl;
-  std::cout << "     -r:                    Use the model cloud resolution and multiply to get scene sampling resolution" << std::endl;
   std::cout << "     --sc:                  Show cluster results" << std::endl;
   std::cout << "     --st:                  Show cluster results together, only when 'sc' is input" << std::endl;
   std::cout << "     --in:					Use existing normal files" << std::endl;
   std::cout << "     --tb:					Two ball switch" << std::endl;
   std::cout << "     --sppf:				Spread discretized ppf" << std::endl;
   std::cout << "     --mls:					Use moving least squares" << std::endl;
-  std::cout << "     --scene_ss val:        Scene uniform sampling radius (default 0.03)" << std::endl;
+  std::cout << "     --scene_ds val:        Scene uniform sampling radius (default same as model)" << std::endl;
   std::cout << "     --angle_thresh val:    angle thresh when do ppf clustering" << std::endl;
   std::cout << "     --dis_thresh val:		first distance thresh(relative to radius)" << std::endl;
   std::cout << "     --para_1 val:			relative reference points number in ppf matching"<< std::endl;
@@ -95,10 +93,10 @@ void parseCommandLine (int argc, char *argv[])
   {
     show_correspondences_ = true;
   }
-  if (pcl::console::find_switch (argc, argv, "-r"))
-  {
-    use_cloud_resolution_ = true;
-  }
+  //if (pcl::console::find_switch (argc, argv, "-r"))
+  //{
+  //  use_cloud_resolution_ = true;
+  //}
   if (pcl::console::find_switch (argc, argv, "--sc"))
   {
     show_cluster_result_ = true;
@@ -165,16 +163,16 @@ void parseCommandLine (int argc, char *argv[])
 	cout<<"Input scene file: "<<scene_filename_<<endl;
   //General parameters
   //pcl::console::parse_argument (argc, argv, "--model_ss", model_ss_);
-  pcl::console::parse_argument (argc, argv, "--scene_ss", scene_ss_);
+  pcl::console::parse_argument (argc, argv, "--scene_ds", scene_ds_);
   pcl::console::parse_argument (argc, argv, "--angle_thresh", angle_thresh);
   pcl::console::parse_argument (argc, argv, "--dis_thresh", cluster_dis_thresh);
   pcl::console::parse_argument (argc, argv, "--para_1", relativeReferencePointsNumber);
   pcl::console::parse_argument (argc, argv, "--para_2", max_vote_thresh);
   pcl::console::parse_argument (argc, argv, "--para_3", max_vote_percentage);
-  pcl::console::parse_argument(argc, argv, "--para_4", num_clusters_per_group);
-  pcl::console::parse_argument(argc, argv, "--re_d", recopute_score_dis_thresh);
-  pcl::console::parse_argument(argc, argv, "--re_a", recopute_score_ang_thresh);
-  pcl::console::parse_argument(argc, argv, "--show_thresh", show_vote_thresh);
+  pcl::console::parse_argument (argc, argv, "--para_4", num_clusters_per_group);
+  pcl::console::parse_argument (argc, argv, "--re_d", recopute_score_dis_thresh);
+  pcl::console::parse_argument (argc, argv, "--re_a", recopute_score_ang_thresh);
+  pcl::console::parse_argument (argc, argv, "--show_thresh", show_vote_thresh);
   pcl::console::parse_argument (argc, argv, "--icp_thresh", icp_dis_thresh);
 }
 
@@ -197,28 +195,13 @@ main(int argc, char *argv[])
 	pcl::PointCloud<NormalType>::Ptr scene_normals(new pcl::PointCloud<NormalType>());
 
 
-	///std::string fileformat;
-	//if (use_ply_filetype_)
-	//{
-		//fileformat = "ply";
-	//}
-	//else
-	//{
-		//fileformat = "pcd";
-	//}
-	if (use_existing_normal_data_)
-	{
-		if (!readPointCloud(scene_filename_, "ply", scene,scene_normals))
-		{
+	if (use_existing_normal_data_) {
+		if (!readPointCloud(scene_filename_, scene, scene_normals))
 			return(-1);
-		}
 	}
-	else
-	{
-		if (!readPointCloud(scene_filename_, "ply", scene))
-		{
+	else {
+		if (!readPointCloud(scene_filename_, scene))
 			return(-1);
-		}
 	}
 	cout<<"Read finish"<<endl;
 	//
@@ -256,16 +239,16 @@ main(int argc, char *argv[])
 	float model_width=model_feature_space.model_size[1];
 	float model_height=model_feature_space.model_size[2];
 	std::cout << "Model resolution: " << model_feature_space.model_res << std::endl;
-
 	std::cout << "Model length: " << model_length << std::endl;
 	std::cout << "Model width: " << model_width << std::endl;
 	std::cout << "Model height: " << model_height << std::endl;
-
-	if (use_cloud_resolution_)
-	{
-		scene_ss_ *= model_feature_space.model_res;
-		cout << "Scene sampling resolution is: " << scene_ss_ << endl;
-	}
+	double scene_ss_ = 1;
+	if (scene_ds_ < 0)
+		scene_ss_ = model_feature_space.model_res;
+	else
+		scene_ss_ *= (scene_ds_/model_feature_space.getSampleRatio())*model_feature_space.model_res;
+	cout << "Scene sampling resolution is: " << scene_ss_ << endl;
+	
 	//
 	//  Downsample Clouds to Extract keypoints
 	//
@@ -346,8 +329,8 @@ main(int argc, char *argv[])
 	//  Compute Model Descriptors  PPF Space for model
 	//
 
+	
 	vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> pose_clusters;
-
 	cout <<">>Begin match!"<<endl;
 	cout <<">cluster angle thresh: "<<angle_thresh<<endl;
 	cout <<">cluster distance thresh: "<<cluster_dis_thresh<<endl;
@@ -358,6 +341,7 @@ main(int argc, char *argv[])
 	cout << ">recompute score angle thresh: " << recopute_score_ang_thresh << endl;
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
 	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, two_ball_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
+	
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
 	//

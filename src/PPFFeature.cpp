@@ -3,7 +3,6 @@
 #include <pcl/common/transforms.h>
 #include <fstream>
 using namespace zyk;
-//IMPLEMENT_SERIAL(PPF_Space,CObject,1);
 
 
 zyk::PPF_Space::PPF_Space()
@@ -60,8 +59,9 @@ zyk::PPF_Space::~PPF_Space()
 //	return true;
 //
 //}
-bool zyk::PPF_Space::init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane)
+bool zyk::PPF_Space::init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane)
 {
+	mName = Name;
 	////中心对称标志
 	//model_x_centrosymmetric = x_s;
 	//model_y_centrosymmetric = y_s;
@@ -595,7 +595,7 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<NormalType>& scene_nor
 
 
 
-void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
+void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& pose_clusters)
 {
 	int scene_steps = floor(1.0 / relativeReferencePointsNumber);
 	if (scene_steps < 1)scene_steps = 1;
@@ -878,11 +878,9 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 			for (int j = 0; j < min(num_clusters_per_group, int(groups[i].size())); ++j)
 			{
 				pose_clusters.push_back(groups[i][j]);
-			}
-				
+			}		
 		}
 	}
-
 }
 
 void zyk::PPF_Space::recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)

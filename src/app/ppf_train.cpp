@@ -17,12 +17,12 @@ std::string model_filename_;
 std::string save_filename_;
 
 //Algorithm params
-bool use_cloud_resolution_  (false);
-bool use_ply_filetype_  (false);
+//bool use_cloud_resolution_  (false);
+//bool use_ply_filetype_  (false);
 bool use_existing_normal_data_  (false);
-bool x_centrosymmetric_  (false);
-bool y_centrosymmetric_  (false);
-bool z_centrosymmetric_  (false);
+//bool x_centrosymmetric_  (false);
+//bool y_centrosymmetric_  (false);
+//bool z_centrosymmetric_  (false);
 bool save_sampled_cloud_ (false);
 bool normal_reorient_switch_ (false);
 bool smart_sample_border_ (false);
@@ -30,9 +30,9 @@ bool show_original_model_ (false);
 bool change_center_switch_(false);
 bool use_mls_ (false);
 float ang_thresh (1);
-float model_ss_ (3.0f);
-float plane_ss_ (3.0f);
-float curvature_radius_(2.0f);
+float model_ds_ (0.05f);
+float plane_ds_ (0.05f);
+float curvature_radius_ (2.0f);
 int angle_div_ (15);
 int distance_div_ (20);
 void showHelp(char *filename)
@@ -46,21 +46,20 @@ void showHelp(char *filename)
 	std::cout << "Usage: " << filename << " model_filename.pcd scene_filename.pcd [Options]" << std::endl << std::endl;
 	std::cout << "Options:" << std::endl;
 	std::cout << "     -h:						Show this help." << std::endl;
-	std::cout << "     -r:						Compute the model cloud resolution and multiply" << std::endl;
+	//std::cout << "     -r:						Compute the model cloud resolution and multiply" << std::endl;
 	std::cout << "     -w:						write the sampled model" << std::endl;
-	std::cout << "     --ply:					Use .poly as input cloud. Default is .pcd" << std::endl;
+	//std::cout << "     --ply:					Use .poly as input cloud. Default is .pcd" << std::endl;
 	std::cout << "     --rn:					Reorient switch!" << std::endl;
 	std::cout << "     --cc:					Change Center switch!" << std::endl;
 	std::cout << "     --so:					show original model" << std::endl;
 	std::cout << "     --in:					Use existing normal files" << std::endl;
 	std::cout << "     --mls:					Use moving least squares" << std::endl;
 	std::cout << "     --sp val:				smart sampling borders, set angle_degree thresh" << std::endl;
-	std::cout << "     --model_ss val:			Model uniform sampling radius (default 3)" << std::endl;
-	std::cout << "     --plane_ss val:			Model plane feature uniform sampling radius, if not set, default same as model" << std::endl;
+	std::cout << "     --model_ds val:			Model down sampling radtia (default 0.05)" << std::endl;
+	std::cout << "     --plane_ds val:			Model plane feature down sampling ratia, if not set, default same as model" << std::endl;
 	std::cout << "     --curv_r val:			curvature radius" << std::endl;
 	std::cout << "     --a_div val:				angle division" << std::endl;
 	std::cout << "     --d_div val:				distance division" << std::endl;
-
 
 }
 
@@ -74,17 +73,13 @@ void parseCommandLine(int argc, char *argv[])
 	}
 
 	//Program behavior
-	if (pcl::console::find_switch(argc, argv, "-r"))
-	{
-		use_cloud_resolution_ = true;
-	}
+	//if (pcl::console::find_switch(argc, argv, "-r"))
+	//{
+	//	use_cloud_resolution_ = true;
+	//}
 	if (pcl::console::find_switch(argc, argv, "-w"))
 	{
 		save_sampled_cloud_ = true;
-	}
-	if (pcl::console::find_switch(argc, argv, "--ply"))
-	{
-		use_ply_filetype_ = true;
 	}
 	if (pcl::console::find_switch(argc, argv, "--rn"))
 	{
@@ -112,9 +107,8 @@ void parseCommandLine(int argc, char *argv[])
 	}
 	//Model & scene filenames
 	std::vector<int> filenames;
-	if (use_ply_filetype_ == false)
-		filenames = pcl::console::parse_file_extension_argument(argc, argv, ".pcd");
-	else
+	filenames = pcl::console::parse_file_extension_argument(argc, argv, ".pcd");
+	if(filenames.size()<1)
 		filenames = pcl::console::parse_file_extension_argument(argc, argv, ".ply");
 	if (filenames.size() < 1)
 	{
@@ -127,9 +121,9 @@ void parseCommandLine(int argc, char *argv[])
 	save_filename_ = model_filename_.substr(0, pos);
 	save_filename_ += ".ppfs";
 	//General parameters
-	pcl::console::parse_argument(argc, argv, "--model_ss", model_ss_);
-	plane_ss_ = model_ss_;
-	pcl::console::parse_argument(argc, argv, "--plane_ss", plane_ss_);
+	pcl::console::parse_argument(argc, argv, "--model_ds", model_ds_);
+	plane_ds_ = model_ds_;
+	pcl::console::parse_argument(argc, argv, "--plane_ds", plane_ds_);
 	pcl::console::parse_argument(argc, argv, "--curv_r", curvature_radius_);
 	pcl::console::parse_argument(argc, argv, "--sp", ang_thresh);
 	pcl::console::parse_argument(argc, argv, "--a_div", angle_div_);
@@ -150,28 +144,13 @@ main(int argc, char *argv[])
 	pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
 	pcl::PointCloud<NormalType>::Ptr model_normals(new pcl::PointCloud<NormalType>());
 
-	std::string fileformat;
-	if (use_ply_filetype_)
-	{
-		fileformat = "ply";
-	}
-	else
-	{
-		fileformat = "pcd";
-	}
-	if (use_existing_normal_data_)
-	{
-		if (!readPointCloud(model_filename_, fileformat, model, model_normals) )
-		{
+	if (use_existing_normal_data_) {
+		if (!readPointCloud(model_filename_, model, model_normals))
 			return(-1);
-		}
 	}
-	else
-	{
-		if (!readPointCloud(model_filename_, fileformat, model) )
-		{
+	else {
+		if (!readPointCloud(model_filename_, model))
 			return(-1);
-		}
 	}
 
 	//
@@ -195,17 +174,6 @@ main(int argc, char *argv[])
 	double max_coord[3];
 	double min_coord[3];
 	float resolution = static_cast<float> (computeCloudResolution(model, max_coord, min_coord));
-	if (use_cloud_resolution_)
-	{
-		if (resolution != 0.0f)
-		{
-			model_ss_ *= resolution;
-			plane_ss_ *= resolution;
-		}
-
-	}
-	std::cout << "Model resolution:       " << resolution << std::endl;
-	std::cout << "Model sampling distance step:    " << model_ss_ << std::endl;
 
 	double model_length = max_coord[0] - min_coord[0];
 	double model_width = max_coord[1] - min_coord[1];
@@ -215,8 +183,11 @@ main(int argc, char *argv[])
 	model_approximate_center(1) = (max_coord[1] + min_coord[1]) / 2;
 	model_approximate_center(2) = (max_coord[2] + min_coord[2]) / 2;
 
-	
-	
+
+	double d_max = sqrt(model_length*model_length + model_width*model_width + model_height*model_height);
+	double model_ss_ = model_ds_*d_max;
+	std::cout << "Model resolution:       " << resolution << std::endl;
+	std::cout << "Model sampling distance step:    " << model_ss_ << std::endl;
 	
 
 	std::cout << "Model length: " << model_length << std::endl;
@@ -232,8 +203,8 @@ main(int argc, char *argv[])
 		if (!use_mls_)
 		{
 			pcl::NormalEstimationOMP<PointType, NormalType> norm_est;
-			norm_est.setKSearch(20);
-			//norm_est.setRadiusSearch(scene_ss_);
+			//norm_est.setKSearch(20);
+			norm_est.setRadiusSearch(0.7*model_ss_);
 			norm_est.setInputCloud(model);
 			norm_est.compute(*model_normals);
 		}
@@ -354,8 +325,8 @@ main(int argc, char *argv[])
 		SmartDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, ang_thresh, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
 	else
 		uniformDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
-	if (plane_ss_>0)
-		uniformDownSamplePointAndNormal(pnts_zero, normals_zero, plane_ss_, model_zero_curvature_keypoints, model_zero_curvature_keyNormals);
+	if (plane_ds_>0)
+		uniformDownSamplePointAndNormal(pnts_zero, normals_zero, plane_ds_*d_max, model_zero_curvature_keypoints, model_zero_curvature_keyNormals);
 	std::cout << "Model total points: " << model->size() << std::endl;
 	std::cout << "No zero total points: " << pnts_no_zero->size() << "; Selected downsample: " << model_no_zero_curvatur_keypoints->size() << std::endl;
 	std::cout << "zero total points: " << pnts_zero->size() << "; Selected downsample: " << model_zero_curvature_keypoints->size() << std::endl;
@@ -377,10 +348,10 @@ main(int argc, char *argv[])
 		//model_keypoints_changed->push_back(tmp);
 	//}
 
-		if(save_sampled_cloud_)
-		{
-			pcl::io::savePLYFile(model_filename_+"_changed",*model);
-		}
+	if (save_sampled_cloud_)
+	{
+		pcl::io::savePLYFile(model_filename_ + "_changed", *model);
+	}
 	//
 	//visualize keypoints
 	//
@@ -402,7 +373,7 @@ main(int argc, char *argv[])
 	pcl::PointCloud<NormalType>::Ptr keyNormals(new pcl::PointCloud<NormalType>());
 	keypoints = model_no_zero_curvatur_keypoints;
 	keyNormals = model_no_zero_curvature_keyNormals;
-	if (plane_ss_ > 0){
+	if (plane_ds_ > 0){
 		*keypoints += *model_zero_curvature_keypoints;
 		*keyNormals += *model_zero_curvature_keyNormals;
 	}
@@ -430,14 +401,16 @@ main(int argc, char *argv[])
 	//}
 
 	//model ppf space
+	int pos = model_filename_.find_last_of('.');
+	std::string objName = model_filename_.substr(0, pos);
 	zyk::PPF_Space model_feature_space;
 	cout << "trained using angle_div , distance_div: " << angle_div_ << ", " << distance_div_ << endl;
-	model_feature_space.init(keypoints, keyNormals, angle_div_ , distance_div_,true);
+	model_feature_space.init(objName, keypoints, keyNormals, angle_div_ , distance_div_,true);
 	model_feature_space.model_size[0]=model_size[0];
 	model_feature_space.model_size[1]=model_size[1];
 	model_feature_space.model_size[2]=model_size[2];
 	model_feature_space.model_res = model_ss_;
-	cout << "Calculated model diameter is " << model_feature_space.getModelDiameter() << endl;
+	cout << "Calculated model max distance is " << model_feature_space.getMaxD() << endl;
 	//
 	// compute no empty ppf box nunber
 	//

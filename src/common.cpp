@@ -10,9 +10,11 @@
 #include <pcl/io/vtk_io.h>
 #include "SmartSampling.hpp"
 #include <pcl/common/transforms.h>
-
+#include <pcl/io/ply/ply_parser.h>
 using namespace std;
 using namespace pcl;
+
+
 
 double computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud, double max_coord[3], double min_coord[3])
 {
@@ -122,32 +124,16 @@ bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, p
 }
 
 
-//bool downSamplePointCloud(const pcl::PointCloud<PointType>::Ptr &scene, const double relSamplingDistance,
-//	pcl::PointCloud<PointType>::Ptr &outCloud, const int method)
-//{
-//	if (method == 1)
-//	{
-//		pcl::UniformSampling<PointType> uniform_sampling;
-//		uniform_sampling.setInputCloud(scene);
-//		uniform_sampling.setRadiusSearch(relSamplingDistance);
-//		uniform_sampling.filter(*outCloud);
-//		return true;
-//	}
-//	if (method == 2)
-//	{
-//		pcl::VoxelGrid<PointType> sor;
-//		sor.setInputCloud(scene);
-//		sor.setLeafSize(relSamplingDistance, relSamplingDistance, relSamplingDistance);
-//		sor.filter(*outCloud);
-//	}
-//}
-
-bool readPointCloud(std::string filename, std::string format, pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNor)
+bool readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNor)
 {
-	if (format == "ply")
+	std::string fileformat;
+	int pos = filename.find_last_of('.') + 1;
+	fileformat = filename.substr(pos);
+
+	if (fileformat == "ply")
 	{
-		pcl::PointCloud<pcl::PointNormal>::Ptr _Pcloud(new pcl::PointCloud<pcl::PointNormal>);
-		if (pcl::io::loadPLYFile<pcl::PointNormal>(filename, *_Pcloud) < 0)
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr _Pcloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+		if (pcl::io::loadPLYFile<pcl::PointXYZRGBNormal>(filename, *_Pcloud) < 0)
 		{
 			pcl::console::print_error("Error loading object/scene file!\n");
 			return false;
@@ -171,7 +157,7 @@ bool readPointCloud(std::string filename, std::string format, pcl::PointCloud<Po
 			}
 		}
 	}
-	else if (format == "pcd")
+	else if (fileformat == "pcd")
 	{
 		/*if (pcl::io::loadPCDFile(filename, *outCloud) < 0)
 		{
