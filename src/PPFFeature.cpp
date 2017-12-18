@@ -471,14 +471,15 @@ void zyk::PPF_Space::getNeighboringPPFBoxIndex(int currentIndex, vector<int>&out
 	}
 
 }
-
-float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, zyk::pose_cluster &pose_clusters)
+//for test only
+float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene, pcl::PointCloud<NormalType>::Ptr& scene_normals, float dis_thresh, float ang_thresh, zyk::pose_cluster &pose_clusters)
 {
 	pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
 	pcl::PointCloud<NormalType>::Ptr rotated_normal(new pcl::PointCloud<NormalType>());
-	pcl::PointCloud<PointType>::Ptr scene = scene_grid.getInputPointCloud();
 
-	scene_grid.resplit(dis_thresh, dis_thresh, dis_thresh);
+	CVoxel_grid scene_grid;
+	scene_grid.Init(dis_thresh, dis_thresh, dis_thresh, scene);
+	//scene_grid.resplit(dis_thresh, dis_thresh, dis_thresh);
 	Eigen::Vector3i grid_div;
 	scene_grid.getGridDiv(grid_div);
 	vector<zyk::box*>* box_vector = scene_grid.getBox_vector();
@@ -514,7 +515,7 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<NormalType>& scene_nor
 			for (int k = 0; k < p_current_neiboring_point_box->size(); ++k)
 			{
 				PointType sp = scene->at((*p_current_neiboring_point_box)[k]);
-				NormalType sn = scene_normals.at((*p_current_neiboring_point_box)[k]);
+				NormalType sn = scene_normals->at((*p_current_neiboring_point_box)[k]);
 				if (fabs(mp.x - sp.x) + fabs(mp.y - sp.y) + fabs(mp.z - sp.z) < dis_thresh)
 				{
 					if (dot(mn.normal, sn.normal, 3) > cos_ang_thresh) {
@@ -595,7 +596,7 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<NormalType>& scene_nor
 
 
 
-void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& pose_clusters)
+void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, float second_dis_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& pose_clusters)
 {
 	int scene_steps = floor(1.0 / relativeReferencePointsNumber);
 	if (scene_steps < 1)scene_steps = 1;
@@ -607,10 +608,11 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 		small_diameter = model_size[1];
 	float box_radius = sqrt(model_size[0] * model_size[0] + model_size[1] * model_size[1] + model_size[2] * model_size[2]);
 	first_dis_thresh *= box_radius;
-	float second_dis_thresh = 0.5 * box_radius;
-	cout << "Second distance thresh is(This by now cannot be customized!): " << second_dis_thresh << endl;
-	recompute_score_dis_thresh *= model_res;
+	second_dis_thresh *= box_radius;
+	cout << "Second distance thresh is: " << second_dis_thresh << endl;
+	recompute_score_dis_thresh *= box_radius;
 	//build grid to accelerate matching process
+	CVoxel_grid scene_grid;
 	scene_grid.Init(diameter, diameter, diameter, scene);
 	Eigen::Vector3i grid_div;
 	scene_grid.getGridDiv(grid_div);

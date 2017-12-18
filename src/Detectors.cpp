@@ -10,7 +10,7 @@ CDetectModel3D::CDetectModel3D()
 	:mDetectOptions(detectOptions{ 0.05,0.3,1,10,1 })
 	, mTrainOptions(trainOptions{ 0.05,1 })
 	, ObjectName("")
-	, ShowColor("red")
+	//, ShowColor("red")
 	, p_PPF(NULL)
 {
 }
@@ -112,15 +112,18 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio,const 
 	CDetectModel3D & modelDetector = *(itr_modelDetector->second);
 	if (modelDetector.p_PPF == NULL)
 		return false;
-	pcl::PointCloud<PointType>::Ptr model_keypoints(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr model_keyNormals(new pcl::PointCloud<NormalType>());
+	//pcl::PointCloud<PointType>::Ptr model_keypoints(new pcl::PointCloud<PointType>());
+	//pcl::PointCloud<NormalType>::Ptr model_keyNormals(new pcl::PointCloud<NormalType>());
+	pcl::PointCloud<PointType>::Ptr model_keypoints;
+	pcl::PointCloud<NormalType>::Ptr model_keyNormals;
 	zyk::PPF_Space*pPPF = modelDetector.p_PPF;
 	pPPF->getPointCloud(model_keypoints);
 	pPPF->getPointNormalCloud(model_keyNormals);
 
 	//downsample
 	pcl::IndicesPtr sampled_index_ptr;
-	sampled_index_ptr = uniformDownSamplePoint(scene, (modelDetector.mDetectOptions.downSampleRatio/modelDetector.mTrainOptions.downSampleRatio)*pPPF->model_res, scene_keypoints);
+	float scene_ss_ = (modelDetector.mDetectOptions.downSampleRatio / modelDetector.mTrainOptions.downSampleRatio)*pPPF->model_res;
+	sampled_index_ptr = uniformDownSamplePoint(scene, scene_ss_, scene_keypoints);
 
 	//normals
 	pcl::MovingLeastSquaresOMP<PointType, PointType> mls;
@@ -129,8 +132,9 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio,const 
 	mls.setIndices(sampled_index_ptr);
 	mls.setComputeNormals(true);
 	mls.setPolynomialFit(true);
+	mls.setPolynomialOrder(modelDetector.mDetectOptions.mlsOrder);
 	mls.setSearchMethod(tree);
-	mls.setSearchRadius(0.7*pPPF->model_res);
+	mls.setSearchRadius(scene_ss_);
 	mls.process(*scene_keypoints);
 	scene_keyNormals = mls.getNormals();
 	for (size_t i = 0; i < scene_keyNormals->size(); ++i)
@@ -138,12 +142,15 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio,const 
 		pcl::flipNormalTowardsViewpoint(scene_keypoints->at(i), 0, 0, 0, scene_keyNormals->at(i).normal[0], scene_keyNormals->at(i).normal[1], scene_keyNormals->at(i).normal[2]);
 	}
 	vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> pose_clusters;
-	pPPF->match(scene_keypoints, scene_keyNormals, false, true, keyPointRatio, 3, 0.95, 0.2, 0.1, 1.8, 0.3, 1, pose_clusters);
+	pPPF->match(scene_keypoints, scene_keyNormals, false, true, keyPointRatio, 3, 0.95, 0.2, 0.1, 0.1, 0.3, modelDetector.mDetectOptions.MaxOverlapDistRel,1, pose_clusters);
 	//matchResult[objectIndex].resize(detectObjects[i].mDetectOptions.)
 	int max_num = modelDetector.mDetectOptions.maxNumber;
 	double minScore = modelDetector.mDetectOptions.minScore;
 	matchResult& res = modelDetector.result;
 	res.clear();
+	if (pose_clusters.empty()) {
+		return false;
+	}
 	for (int i = 0; i < max_num && pose_clusters[i].vote_count > minScore; ++i) {
 		res.scores.push_back(pose_clusters[i].vote_count);
 		res.rotatios.push_back(Vec3d{ pose_clusters[i].mean_rot[0], pose_clusters[i].mean_rot[1], pose_clusters[i].mean_rot[2] });
@@ -163,15 +170,15 @@ bool CDetectors3D::findParts(double keyPointRatio,const bool smoothflag /*= true
 			return false;
 }
 
-bool CDetectors3D::readSurfaceModel(string filePath)
+CDetectModel3D* CDetectors3D::readSurfaceModel(string filePath)
 {
 	CDetectModel3D* tmp_model3d = new CDetectModel3D();
 	if (!tmp_model3d->readSurfaceModel(filePath)) {
 		delete tmp_model3d;
-		return false;
+		return NULL;
 	}
 	detectObjects.insert(make_pair(tmp_model3d->ObjectName, tmp_model3d));
-	return true;
+	return tmp_model3d;
 }
 
 void CDetectors3D::showMatchResults()

@@ -204,7 +204,7 @@ main(int argc, char *argv[])
 		{
 			pcl::NormalEstimationOMP<PointType, NormalType> norm_est;
 			//norm_est.setKSearch(20);
-			norm_est.setRadiusSearch(0.7*model_ss_);
+			norm_est.setRadiusSearch(model_ss_);
 			norm_est.setInputCloud(model);
 			norm_est.compute(*model_normals);
 		}
@@ -218,7 +218,7 @@ main(int argc, char *argv[])
 			mls.setComputeNormals(true);
 			mls.setPolynomialFit(true);
 			mls.setSearchMethod(tree);
-			mls.setSearchRadius(0.7*model_ss_);
+			mls.setSearchRadius(model_ss_);
 			mls.process(*pnts_tmp);
 			model = pnts_tmp;
 			model_normals = mls.getNormals();

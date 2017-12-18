@@ -18,6 +18,7 @@ namespace zyk{
 class ZYK_EXPORTS CDetectModel3D
 {
 	friend class CDetectors3D;
+public:
 	typedef struct {
 		double downSampleRatio;
 		double minScore;
@@ -43,11 +44,8 @@ class ZYK_EXPORTS CDetectModel3D
 		void clear() { matchComplete = false; rotatios.clear(); translations.clear(); scores.clear(); }
 	} matchResult;
 
-public:
-	detectOptions mDetectOptions;
-	trainOptions mTrainOptions;
-	std::string ObjectName; 
-	std::string ShowColor; 
+
+
 public:
 	CDetectModel3D();
 	~CDetectModel3D();
@@ -59,7 +57,18 @@ public:
 	void clearSurModel();
 	// 获取采样后的模型点云,返回数目
 	// int getSampledModel(double*x, double*y, double*z, double*nx = NULL, double*ny = NULL, double*nz = NULL);
+
+public:
+	const detectOptions& getDetectOptions() const { return mDetectOptions; };
+	void setDetectOptions(detectOptions& opt) { mDetectOptions = opt; };
+	const string& getModelName() const { return ObjectName; };
+	const matchResult& getMatchResult() const { return result; };
+protected:
+	detectOptions mDetectOptions;
+	trainOptions mTrainOptions;
+	std::string ObjectName;
 	matchResult result;
+	//std::string ShowColor; 
 private:
 	zyk::PPF_Space* p_PPF;
 };
@@ -75,7 +84,7 @@ public:
 	bool readScene(const string filePath, const string &unit = "m");
 	bool findPart(const string objectName, double keyPointRatio=0.2,const bool smoothFlag = true);
 	bool findParts(double keyPointRatio = 0.2,const bool smoothflag = true);
-	bool readSurfaceModel(string filePath);
+	CDetectModel3D* readSurfaceModel(string filePath);
 	void showMatchResults();
 	void clear();
 public:

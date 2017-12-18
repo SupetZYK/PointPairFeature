@@ -30,13 +30,14 @@ bool use_mls_(false);
 //float model_ss_ (0.01f);
 float scene_ds_(-1.0f);
 float angle_thresh=M_PI/15;
-float cluster_dis_thresh = 0.2;
-float recopute_score_dis_thresh = 2;
+float cluster_dis_thresh = 0.1;
+float recopute_score_dis_thresh = 0.05;
 float recopute_score_ang_thresh = -1;
 float relativeReferencePointsNumber = 0.2;
 float icp_dis_thresh=0.3;
 float max_vote_thresh (0.5);
 float max_vote_percentage (0.8);
+float second_distance_thresh(0.5);
 int num_clusters_per_group = 2;
 float show_vote_thresh (0.3);
 int max_show_number (10);
@@ -71,6 +72,7 @@ void showHelp (char *filename)
   std::cout << "     --para_4 val:			Number of clusters per group.set to '-1' to close group" << std::endl;
   std::cout << "     --re_d val:			recompute score distance thresh, relative to model resolution.Set to '-1' to disable recompute score" << std::endl;
   std::cout << "     --re_a val:			recompute score angle thresh, Set to '-1' to disable using angle thresh" << std::endl;
+  std::cout << "     --se_d val:			second distance thresh, for overlapping elimination(default 0.5)" << std::endl;
   std::cout << "     --show_thresh val:     the clusters whose vote is greater than this will be displayed" << std::endl;
   std::cout << "     --icp_thresh val:		max clusters per pose can be in" << std::endl;
 }
@@ -172,6 +174,7 @@ void parseCommandLine (int argc, char *argv[])
   pcl::console::parse_argument (argc, argv, "--para_4", num_clusters_per_group);
   pcl::console::parse_argument (argc, argv, "--re_d", recopute_score_dis_thresh);
   pcl::console::parse_argument (argc, argv, "--re_a", recopute_score_ang_thresh);
+  pcl::console::parse_argument (argc, argv, "--se_d", second_distance_thresh);
   pcl::console::parse_argument (argc, argv, "--show_thresh", show_vote_thresh);
   pcl::console::parse_argument (argc, argv, "--icp_thresh", icp_dis_thresh);
 }
@@ -269,8 +272,8 @@ main(int argc, char *argv[])
 		{
 			pcl::NormalEstimationOMP<PointType, NormalType> norm_est;
 			norm_est.setIndices(sampled_index_ptr);
-			norm_est.setKSearch(20);
-			//norm_est.setRadiusSearch(scene_ss_);
+			//norm_est.setKSearch(20);
+			norm_est.setRadiusSearch(scene_ss_);
 			norm_est.setInputCloud(scene);
 			norm_est.compute(*scene_keyNormals);
 		}
@@ -284,7 +287,8 @@ main(int argc, char *argv[])
 			mls.setComputeNormals(true);
 			mls.setPolynomialFit(true);
 			mls.setSearchMethod(tree);
-			mls.setSearchRadius(0.5*scene_ss_);
+			mls.setSearchRadius(0.7*scene_ss_);
+			//mls.setSearchRadius(0.7*model_feature_space.model_res);
 			mls.process(*scene_keypoints);
 
 			scene_keyNormals = mls.getNormals();
@@ -339,8 +343,9 @@ main(int argc, char *argv[])
 	cout <<">max_vote_percentage: "<<max_vote_percentage<<endl;
 	cout <<">recompute score distance thresh: " << recopute_score_dis_thresh << endl;
 	cout << ">recompute score angle thresh: " << recopute_score_ang_thresh << endl;
+	cout << "second distance thresh: " << second_distance_thresh << endl;
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
-	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, two_ball_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, num_clusters_per_group, pose_clusters);
+	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, two_ball_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, second_distance_thresh, num_clusters_per_group, pose_clusters);
 	
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
