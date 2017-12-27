@@ -81,6 +81,17 @@ void CDetectModel3D::clearSurModel()
 	}
 }
 
+void CDetectModel3D::getModelPointCloud(vector<Vec3d>& modelPoints)
+{
+	if (p_PPF != NULL) {
+		pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
+		p_PPF->getPointCloud(model);
+		for (size_t i = 0; i < model->size(); ++i) {
+			modelPoints.push_back(Vec3d{ model->at(i).x, model->at(i).y, model->at(i).z });
+		}
+	}
+}
+
 //global scene variable
 pcl::PointCloud<PointType>::Ptr scene(new pcl::PointCloud<PointType>());
 pcl::PointCloud<NormalType>::Ptr sceneNormals (new pcl::PointCloud<NormalType>());
@@ -89,7 +100,7 @@ pcl::PointCloud<NormalType>::Ptr scene_keyNormals(new pcl::PointCloud<NormalType
 
 
 
-bool CDetectors3D::readScene(const string filePath, const string &unit /*= "m"*/)
+bool CDetectors3D::readScene(const string filePath)
 {
 	scene->clear();
 	sceneNormals->clear();
@@ -102,7 +113,7 @@ bool CDetectors3D::readScene(const string filePath, const string &unit /*= "m"*/
 	return true;
 }
 
-bool CDetectors3D::findPart(const string objectName, double keyPointRatio,const bool smoothFlag /*= true*/)
+bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
 {
 	std::map<std::string, CDetectModel3D*>::iterator itr_modelDetector = detectObjects.find(objectName);
 	if (itr_modelDetector==detectObjects.end())
@@ -160,13 +171,13 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio,const 
 	return true;
 }
 
-bool CDetectors3D::findParts(double keyPointRatio,const bool smoothflag /*= true*/)
+bool CDetectors3D::findParts(double keyPointRatio)
 {
 	//@todo repeated using find
 	bool res = true;
 	map<string, CDetectModel3D*>::iterator it;
 	for (it=detectObjects.begin();it!=detectObjects.end();++it)
-		if (!findPart(it->first, keyPointRatio, smoothflag))
+		if (!findPart(it->first, keyPointRatio))
 			return false;
 }
 
