@@ -85,7 +85,7 @@ void CDetectModel3D::getModelPointCloud(vector<Vec3d>& modelPoints)
 {
 	if (p_PPF != NULL) {
 		pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
-		p_PPF->getPointCloud(model);
+		p_PPF->getCenteredPointCloud(model);
 		for (size_t i = 0; i < model->size(); ++i) {
 			modelPoints.push_back(Vec3d{ model->at(i).x, model->at(i).y, model->at(i).z });
 		}
@@ -128,7 +128,7 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
 	pcl::PointCloud<PointType>::Ptr model_keypoints;
 	pcl::PointCloud<NormalType>::Ptr model_keyNormals;
 	zyk::PPF_Space*pPPF = modelDetector.p_PPF;
-	pPPF->getPointCloud(model_keypoints);
+	pPPF->getCenteredPointCloud(model_keypoints);
 	pPPF->getPointNormalCloud(model_keyNormals);
 
 	//downsample
@@ -207,7 +207,7 @@ void CDetectors3D::showMatchResults()
 		//pcl::PointCloud<NormalType>::Ptr model_keyNormals(new pcl::PointCloud<NormalType>());
 		if (it->second->p_PPF == NULL)
 			continue;
-		it->second->p_PPF->getPointCloud(model_keypoints);
+		it->second->p_PPF->getModelPointCloud(model_keypoints);
 		//detectObjects[i].p_PPF->getPointNormalCloud(model_keyNormals);
 		matchResult& res = it->second->result;
 		if (res.matchComplete)

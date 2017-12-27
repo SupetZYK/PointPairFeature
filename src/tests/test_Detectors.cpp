@@ -15,13 +15,13 @@ int main(int argc, char**argv) {
 	opt.downSampleRatio = 0.08;
 	opt.maxNumber = 20;
 	opt.MaxOverlapDistRel = 0.5;
-	opt.minScore = 0.2;
+	opt.minScore = 0.25;
 	opt.mlsOrder = 1;
 
 	detectors.readScene(scene_file);
 	CDetectModel3D* model = detectors.readSurfaceModel(surface_model_file);
 	model->setDetectOptions(opt);
-		detectors.findParts(0.1);
+		detectors.findParts(0.2);
 
 	detectors.showMatchResults();
 	system("pause");

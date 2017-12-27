@@ -238,7 +238,7 @@ main(int argc, char *argv[])
 		//model_feature_space.Serialize(ar);
 		//ar.Close();
 		//fileload.Close();
-		model_feature_space.getPointCloud(model_keypoints);
+		model_feature_space.getCenteredPointCloud(model_keypoints);
 		model_feature_space.getPointNormalCloud(model_keyNormals);
 	//}
 

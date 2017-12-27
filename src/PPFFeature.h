@@ -62,7 +62,8 @@ namespace zyk
 
 		//in order to spread discretized ppf, use this to get neighboring ppf box
 		void getNeighboringPPFBoxIndex(int currentIndex,vector<int>&out_vec);
-		void getPointCloud(pcl::PointCloud<PointType>::Ptr&pointcloud){ pointcloud = input_point_cloud; };
+		void getModelPointCloud(pcl::PointCloud<PointType>::Ptr&pointcloud){ pointcloud = input_point_cloud; };
+		void getCenteredPointCloud(pcl::PointCloud<PointType>::Ptr&pointcloud){ pointcloud = centered_point_cloud; };
 		void getPointNormalCloud(pcl::PointCloud<NormalType>::Ptr&pointNormals){ pointNormals = input_point_normal; };
 
 		friend class boost::serialization::access;
@@ -85,7 +86,7 @@ namespace zyk
 		//
 		float model_size[3];
 		float model_res;
-		bool ignore_plane_switch = false;
+		bool ignore_plane_switch;
 
 	protected:
 		///////////////IO
@@ -110,6 +111,7 @@ namespace zyk
 
 		//ptr to data
 		pcl::PointCloud<PointType>::Ptr input_point_cloud;
+		pcl::PointCloud<PointType>::Ptr centered_point_cloud;
 		pcl::PointCloud<NormalType>::Ptr input_point_normal;
 		//grid property
 		int32_t grid_f1_div;
@@ -134,6 +136,8 @@ namespace zyk
 		//multiplier
 		Eigen::Vector4i grid_div_mul;
 		//Eigen::Vector3f point_cloud_center;
+		//model cloud center
+		double cx, cy, cz;
 	};
 
 
@@ -173,7 +177,7 @@ void zyk::PPF_Space::save(Archive& ar, const unsigned int version)
 		ar & ppf_vector[i].ppf.f3;
 		ar & ppf_vector[i].ppf.f4;
 	}
-	int point_num=input_point_cloud->size();
+	int point_num= input_point_cloud->size();
 	ar & point_num;
 	for (int32_t i = 0; i < input_point_cloud->size(); i++)
 	{
@@ -237,6 +241,32 @@ void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 		input_point_cloud->push_back(_tem);
 		input_point_normal->push_back(_nor);
 	}
+
+	float minx, miny, minz, maxx, maxy, maxz;
+	for (size_t i = 0; i < input_point_cloud->size(); ++i) {
+		if (i == 0) {
+			maxx = minx = input_point_cloud->at(i).x;
+			maxy = miny = input_point_cloud->at(i).y;
+			maxz = minz = input_point_cloud->at(i).z;
+		}
+		else {
+			maxx = std::max(maxx, input_point_cloud->at(i).x); minx = std::min(minx, input_point_cloud->at(i).x);
+			maxy = std::max(maxy, input_point_cloud->at(i).y); miny = std::min(miny, input_point_cloud->at(i).y);
+			maxz = std::max(maxz, input_point_cloud->at(i).z); minz = std::min(minz, input_point_cloud->at(i).z);
+		}
+	}
+	cx = (minx + maxx) / 2;
+	cy = (miny + maxy) / 2;
+	cz = (minz + maxz) / 2;
+	centered_point_cloud->clear();
+	for (size_t i = 0; i < input_point_cloud->size(); ++i) {
+		PointType _tem;
+		_tem.x = input_point_cloud->at(i).x - cx;
+		_tem.y = input_point_cloud->at(i).y - cy;
+		_tem.z = input_point_cloud->at(i).z - cz;
+		centered_point_cloud->push_back(_tem);
+	}
+
 	grid_div_mul(0) = 1;
 	grid_div_mul(1) = grid_div_mul(0)*grid_f1_div;
 	grid_div_mul(2) = grid_div_mul(1)*grid_f2_div;

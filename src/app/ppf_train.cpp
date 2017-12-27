@@ -248,12 +248,12 @@ main(int argc, char *argv[])
 				model_normals->points[i].normal_y = -normal_temp(1);
 				model_normals->points[i].normal_z = -normal_temp(2);
 			}
-			if (change_center_switch_)
-			{
-				model->points[i].x -= model_approximate_center(0);
-				model->points[i].y -= model_approximate_center(1);
-				model->points[i].z -= model_approximate_center(2);
-			}
+			//if (change_center_switch_)
+			//{
+			//	model->points[i].x -= model_approximate_center(0);
+			//	model->points[i].y -= model_approximate_center(1);
+			//	model->points[i].z -= model_approximate_center(2);
+			//}
 
 		}
 	}

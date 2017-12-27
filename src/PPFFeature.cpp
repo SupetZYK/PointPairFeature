@@ -6,6 +6,17 @@ using namespace zyk;
 
 
 zyk::PPF_Space::PPF_Space()
+	:ignore_plane_switch(false)
+	, mName("")
+	, grid_f1_div(10)
+	, grid_f2_div(10)
+	, grid_f3_div(10)
+	, grid_f4_div(10)
+	, total_box_num(10000)
+	, cx(0)
+	, cy(0)
+	, cz(0)
+	, centered_point_cloud(new pcl::PointCloud<PointType>())
 {
 
 }
@@ -24,7 +35,7 @@ zyk::PPF_Space::~PPF_Space()
 //	leaf_size(3) = distance_step;
 //
 //	//ptr
-//	input_point_cloud = pointcloud;
+//	centered_point_cloud = pointcloud;
 //	input_point_normal = pointNormal;
 //	//switch
 //	ignore_plane_switch = ignore_plane;
@@ -70,6 +81,30 @@ bool zyk::PPF_Space::init(std::string Name, pcl::PointCloud<PointType>::Ptr poin
 	//point_cloud_center = pointCloudCenter;
 	//ptr
 	input_point_cloud = pointcloud;
+	float minx, miny, minz, maxx, maxy, maxz;
+	for (size_t i = 0; i < pointcloud->size(); ++i) {
+		if (i == 0) {
+			maxx = minx = pointcloud->at(i).x;
+			maxy = miny = pointcloud->at(i).y;
+			maxz = minz = pointcloud->at(i).z;
+		}
+		else {
+			maxx = std::max(maxx, pointcloud->at(i).x); minx = std::min(minx, pointcloud->at(i).x);
+			maxy = std::max(maxy, pointcloud->at(i).y); miny = std::min(miny, pointcloud->at(i).y);
+			maxz = std::max(maxz, pointcloud->at(i).z); minz = std::min(minz, pointcloud->at(i).z);
+		}
+	}
+	cx = (minx + maxx) / 2;
+	cy = (miny + maxy) / 2;
+	cz = (minz + maxz) / 2;
+	centered_point_cloud->clear();
+	for (size_t i = 0; i < pointcloud->size(); ++i) {
+		PointType _tem;
+		_tem.x = pointcloud->at(i).x - cx;
+		_tem.y = pointcloud->at(i).y - cy;
+		_tem.z = pointcloud->at(i).z - cz;
+		centered_point_cloud->push_back(_tem);
+	}
 	input_point_normal = pointNormal;
 	//div
 	assert(angle_div > 0 && distance_div > 0);
@@ -123,7 +158,7 @@ bool zyk::PPF_Space::init(std::string Name, pcl::PointCloud<PointType>::Ptr poin
 
 void zyk::PPF_Space::clear()
 {
-	input_point_cloud = NULL;
+	centered_point_cloud = NULL;
 	input_point_normal = NULL;
 	for (int32_t i = 0; i < ppf_box_vector.size(); i++){
 		if (ppf_box_vector[i] != NULL) delete ppf_box_vector[i];
@@ -330,43 +365,43 @@ bool zyk::PPF_Space::getPoseFromPPFCorresspondence(PointType& model_point, Norma
 bool zyk::PPF_Space::computeAllPPF()
 {
 	//check
-	if (input_point_cloud == NULL || input_point_normal == NULL)
+	if (centered_point_cloud == NULL || input_point_normal == NULL)
 		return false;
-	if (input_point_cloud->empty() || input_point_normal->empty())
+	if (centered_point_cloud->empty() || input_point_normal->empty())
 		return false;
-	if (input_point_cloud->size() != input_point_normal->size())
+	if (centered_point_cloud->size() != input_point_normal->size())
 		return false;
 
 	//loop
-	for (int32_t i = 0; i < input_point_cloud->size(); i++)
+	for (int32_t i = 0; i < centered_point_cloud->size(); i++)
 	{
 		/*if (model_x_centrosymmetric)
 		{
-			if (input_point_cloud->at(i).z > point_cloud_center(2))
+			if (centered_point_cloud->at(i).z > point_cloud_center(2))
 				continue;
 		}
 		if (model_y_centrosymmetric)
 		{
-			if (input_point_cloud->at(i).x > point_cloud_center(0))
+			if (centered_point_cloud->at(i).x > point_cloud_center(0))
 				continue;
 		}
 		if (model_z_centrosymmetric)
 		{
-			if (input_point_cloud->at(i).y > point_cloud_center(1))
+			if (centered_point_cloud->at(i).y > point_cloud_center(1))
 				continue;
 		}*/
-		for (int32_t j = 0; j < input_point_cloud->size(); j++)
+		for (int32_t j = 0; j < centered_point_cloud->size(); j++)
 		{
 			if (i != j)
 			{
 				PPF ppf;
-				computeSinglePPF(input_point_cloud, input_point_normal, i, j, ppf);
+				computeSinglePPF(centered_point_cloud, input_point_normal, i, j, ppf);
 				if (ignore_plane_switch)
 				{
 					if (abs(ppf.ppf.f3) < 0.01 && abs(ppf.ppf.f1-M_PI_2)<0.01&&abs(ppf.ppf.f2-M_PI_2)<0.01)
 						continue;
 				}
-				ppf.ppf.alpha_m = computeAlpha(input_point_cloud->at(i).getVector3fMap(), input_point_normal->at(i).getNormalVector3fMap(), input_point_cloud->at(j).getVector3fMap());
+				ppf.ppf.alpha_m = computeAlpha(centered_point_cloud->at(i).getVector3fMap(), input_point_normal->at(i).getNormalVector3fMap(), centered_point_cloud->at(j).getVector3fMap());
 				ppf_vector.push_back(ppf);
 			}
 		}
@@ -487,7 +522,7 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene
 	float cos_ang_thresh = cos(ang_thresh);
 
 	float score = 0;
-	pcl::transformPointCloud(*input_point_cloud, *rotated_model, pose_clusters.mean_transformation);
+	pcl::transformPointCloud(*centered_point_cloud, *rotated_model, pose_clusters.mean_transformation);
 	transformNormals(*input_point_normal, *rotated_normal, pose_clusters.mean_transformation);
 	for (int32_t i = 0; i < rotated_model->size(); ++i)
 	{
@@ -528,7 +563,7 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene
 		}
 
 	}
-	return score/ input_point_cloud->size();
+	return score/ centered_point_cloud->size();
 }
 
 //void zyk::PPF_Space::Serialize(CArchive &ar)
@@ -541,10 +576,10 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene
 //		{
 //			ar << ppf_vector[i].first_index << ppf_vector[i].second_index << ppf_vector[i].ppf.alpha_m << ppf_vector[i].ppf.f1 << ppf_vector[i].ppf.f2 << ppf_vector[i].ppf.f3 << ppf_vector[i].ppf.f4;
 //		}
-//		ar << input_point_cloud->size();
-//		for (int32_t i = 0; i < input_point_cloud->size(); i++)
+//		ar << centered_point_cloud->size();
+//		for (int32_t i = 0; i < centered_point_cloud->size(); i++)
 //		{
-//			ar << input_point_cloud->at(i).x << input_point_cloud->at(i).y << input_point_cloud->at(i).z << input_point_normal->at(i).normal_x << input_point_normal->at(i).normal_y << input_point_normal->at(i).normal_z;
+//			ar << centered_point_cloud->at(i).x << centered_point_cloud->at(i).y << centered_point_cloud->at(i).z << input_point_normal->at(i).normal_x << input_point_normal->at(i).normal_y << input_point_normal->at(i).normal_z;
 //		}
 //	}
 //	else
@@ -558,14 +593,14 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene
 //		}
 //		int32_t points_num = 0;
 //		ar >> points_num;
-//		input_point_cloud = pcl::PointCloud<PointType>::Ptr(new pcl::PointCloud<PointType>());
+//		centered_point_cloud = pcl::PointCloud<PointType>::Ptr(new pcl::PointCloud<PointType>());
 //		input_point_normal = pcl::PointCloud<NormalType>::Ptr(new pcl::PointCloud<NormalType>());
 //		for (int32_t i = 0; i < points_num; i++)
 //		{
 //			PointType _tem;
 //			NormalType _nor;
 //			ar >> _tem.x >> _tem.y >> _tem.z >> _nor.normal_x >> _nor.normal_y >> _nor.normal_z;
-//			input_point_cloud->push_back(_tem);
+//			centered_point_cloud->push_back(_tem);
 //			input_point_normal->push_back(_nor);
 //		}
 //		grid_div_mul(0) = 1;
@@ -666,8 +701,8 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 			int32_t reference_pnt_index = (*p_current_point_box)[cnt1];
 			/////////build an accumulator for this reference point
 			// in matlab the row size is size+1, why?
-			zyk::PPF_Accumulator small_acum(input_point_cloud->size(), 30);
-			zyk::PPF_Accumulator big_acum(input_point_cloud->size(), 30);
+			zyk::PPF_Accumulator small_acum(centered_point_cloud->size(), 30);
+			zyk::PPF_Accumulator big_acum(centered_point_cloud->size(), 30);
 #ifdef use_eigen
 			const Eigen::Vector3f& rp = scene->at(reference_pnt_index).getVector3fMap();
 			const Eigen::Vector3f& rn = scene_normals->at(reference_pnt_index).getNormalVector3fMap();
@@ -796,7 +831,7 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 						tst_cnt1++;
 						float alpha = col / 30.0 * 2 * M_PI - M_PI;
 						Eigen::Affine3f transformation;
-						if (zyk::PPF_Space::getPoseFromPPFCorresspondence(input_point_cloud->at(row), input_point_normal->at(row), scene->at(reference_pnt_index), scene_normals->at(reference_pnt_index), alpha, transformation)) {
+						if (zyk::PPF_Space::getPoseFromPPFCorresspondence(centered_point_cloud->at(row), input_point_normal->at(row), scene->at(reference_pnt_index), scene_normals->at(reference_pnt_index), alpha, transformation)) {
 							rawClusters.push_back(zyk::pose_cluster(transformation, small_acum.acumulator(row, col)));
 							continue;
 						}
@@ -808,7 +843,7 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 						tst_cnt1++;
 						float alpha = col / 30.0 * 2 * M_PI - M_PI;
 						Eigen::Affine3f transformation;
-						if (zyk::PPF_Space::getPoseFromPPFCorresspondence(input_point_cloud->at(row), input_point_normal->at(row), scene->at(reference_pnt_index), scene_normals->at(reference_pnt_index), alpha, transformation)) {
+						if (zyk::PPF_Space::getPoseFromPPFCorresspondence(centered_point_cloud->at(row), input_point_normal->at(row), scene->at(reference_pnt_index), scene_normals->at(reference_pnt_index), alpha, transformation)) {
 							rawClusters.push_back(zyk::pose_cluster(transformation, small_acum.acumulator(row, col)));
 						}
 					}
@@ -883,6 +918,11 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 			}		
 		}
 	}
+	for (size_t i = 0; i < pose_clusters.size(); ++i) {
+		zyk::pose_cluster& pos = pose_clusters[i];
+		pos.mean_transformation.translate(Eigen::Vector3f(-cx, -cy, -cz));
+		pos.mean_trans = pos.mean_transformation.translation();
+	}
 }
 
 void zyk::PPF_Space::recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
@@ -902,7 +942,7 @@ void zyk::PPF_Space::recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointClo
 	for (int32_t num = 0; num < pose_clusters.size(); ++num)
 	{
 		float score = 0;
-		pcl::transformPointCloud(*input_point_cloud, *rotated_model, pose_clusters[num].mean_transformation);
+		pcl::transformPointCloud(*centered_point_cloud, *rotated_model, pose_clusters[num].mean_transformation);
 		transformNormals(*input_point_normal, *rotated_normal, pose_clusters[num].mean_transformation);
 		for (int32_t i = 0; i < rotated_model->size(); ++i)
 		{
@@ -943,7 +983,7 @@ void zyk::PPF_Space::recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointClo
 			}
 
 		}
-		pose_clusters[num].vote_count = score / input_point_cloud->size();
+		pose_clusters[num].vote_count = score / centered_point_cloud->size();
 	}
 }
 
