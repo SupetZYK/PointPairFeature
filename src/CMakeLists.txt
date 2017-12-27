@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 project(ppf_recoginition)
 
 
-set(PCL_DIR "D:/Program Files/PCL_STATIC/cmake/")
+#set(PCL_DIR "D:/Program Files/PCL_STATIC/cmake/")
 
 
 #OpenCV library
