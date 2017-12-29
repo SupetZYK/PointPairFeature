@@ -142,10 +142,9 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
 	mls.setInputCloud(scene);
 	mls.setIndices(sampled_index_ptr);
 	mls.setComputeNormals(true);
-	mls.setPolynomialFit(true);
 	mls.setPolynomialOrder(modelDetector.mDetectOptions.mlsOrder);
 	mls.setSearchMethod(tree);
-	mls.setSearchRadius(scene_ss_);
+	mls.setSearchRadius(pPPF->model_res);
 	mls.process(*scene_keypoints);
 	scene_keyNormals = mls.getNormals();
 	for (size_t i = 0; i < scene_keyNormals->size(); ++i)
@@ -153,7 +152,22 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
 		pcl::flipNormalTowardsViewpoint(scene_keypoints->at(i), 0, 0, 0, scene_keyNormals->at(i).normal[0], scene_keyNormals->at(i).normal[1], scene_keyNormals->at(i).normal[2]);
 	}
 	vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> pose_clusters;
-	pPPF->match(scene_keypoints, scene_keyNormals, false, true, keyPointRatio, 3, 0.95, 0.2, 0.1, 0.1, 0.3, modelDetector.mDetectOptions.MaxOverlapDistRel,1, pose_clusters);
+	pPPF->match(
+		scene_keypoints, 
+		scene_keyNormals, 
+		false, //spread ppf switch
+		true, //two ball switch
+		keyPointRatio, 
+		3, //max vote thresh
+		0.95, //max vote percentage
+		0.2, //angle thresh
+		0.1, //first distance thresh
+		0.1, //recompute score distance thresh
+		0.3, //recompute score angle thresh
+		modelDetector.mDetectOptions.MaxOverlapDistRel,// max overlap ratio
+		1, //
+		pose_clusters
+	);
 	//matchResult[objectIndex].resize(detectObjects[i].mDetectOptions.)
 	int max_num = modelDetector.mDetectOptions.maxNumber;
 	double minScore = modelDetector.mDetectOptions.minScore;
@@ -179,6 +193,7 @@ bool CDetectors3D::findParts(double keyPointRatio)
 	for (it=detectObjects.begin();it!=detectObjects.end();++it)
 		if (!findPart(it->first, keyPointRatio))
 			return false;
+	return true;
 }
 
 CDetectModel3D* CDetectors3D::readSurfaceModel(string filePath)

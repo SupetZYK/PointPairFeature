@@ -1,6 +1,7 @@
 #include "Voxel_grid.h"
+#include <string.h>
 
-void zyk::CVoxel_grid::Init(int32_t x_div, int32_t y_div, int32_t z_div, pcl::PointCloud<PointType>::Ptr pntcloud)
+void zyk::CVoxel_grid::Init(int x_div, int y_div, int z_div, pcl::PointCloud<PointType>::Ptr pntcloud)
 {
 	assert(x_div >= 1 && y_div >= 1 && z_div >= 1);
 	grid_x_div = x_div;
@@ -54,7 +55,11 @@ void zyk::CVoxel_grid::Init(float leaf_size_x, float leaf_size_y, float leaf_siz
 	assert(total_box_num > 0);
 	box_vector.resize(total_box_num, NULL);
 
-	if(!constructGrid());
+	if (!constructGrid()) {
+		std::cout << "ERROR DURING CONSTRUCT!" << std::endl;
+		system("pause");
+		exit(-1);
+	}
 }
 
 void zyk::CVoxel_grid::resplit(float leaf_size_x, float leaf_size_y, float leaf_size_z)
@@ -83,16 +88,20 @@ void zyk::CVoxel_grid::resplit(float leaf_size_x, float leaf_size_y, float leaf_
 	inv_leaf_size(2) = 1 / leaf_size(2);
 
 	assert(total_box_num > 0);
-	for (int32_t i = 0; i < box_vector.size(); i++)
+	for (int i = 0; i < box_vector.size(); i++)
 		if (box_vector[i] != NULL)  delete box_vector[i];
 	box_vector.clear();
 	box_vector.resize(total_box_num, NULL);
-	if(!constructGrid());
+	if (!constructGrid()) {
+		std::cout << "ERROR DURING CONSTRUCT!" << std::endl;
+		system("pause");
+		exit(-1);
+	}
 }
 
 zyk::CVoxel_grid::~CVoxel_grid()
 {
-	for (int32_t i = 0; i < box_vector.size(); i++)
+	for (int i = 0; i < box_vector.size(); i++)
 		if(box_vector[i]!=NULL)  delete box_vector[i];
 }
 
@@ -104,7 +113,7 @@ bool zyk::CVoxel_grid::findBoundingBox()
 		return false;
 	min_p.setConstant(FLT_MAX);
 	max_p.setConstant(-FLT_MAX);
-	for (int32_t i = 0; i < input_point_cloud->size(); i++)
+	for (int i = 0; i < input_point_cloud->size(); i++)
 	{
 		PointType p = input_point_cloud->at(i);
 		if (!pcl_isfinite(p.x) || !pcl_isfinite(p.y) || !pcl_isfinite(p.z))
@@ -117,7 +126,7 @@ bool zyk::CVoxel_grid::findBoundingBox()
 	
 	return true;
 }
-void zyk::CVoxel_grid::getPntBoxCoord(PointType& pnt, int32_t* ijk)
+void zyk::CVoxel_grid::getPntBoxCoord(PointType& pnt, int* ijk)
 {
 	if (!pcl_isfinite(pnt.x) || !pcl_isfinite(pnt.y) || !pcl_isfinite(pnt.z))
 		ijk[0] = ijk[1] = ijk[2] = -1;
@@ -143,18 +152,18 @@ void zyk::CVoxel_grid::getPntBoxCoord(PointType& pnt, Eigen::Vector3i& ijk)
 		ijk = Eigen::Vector3i(-1, -1, -1);
 }
 
-int32_t zyk::CVoxel_grid::getPntBoxIndex(PointType& pnt)
+int zyk::CVoxel_grid::getPntBoxIndex(PointType& pnt)
 {
 #ifdef use_eigen
 	Eigen::Vector3i ijk;
 #else
-	int32_t ijk[3];
+	int ijk[3];
 #endif
 	getPntBoxCoord(pnt, ijk);
 #ifdef use_eigen
-	int32_t i = ijk.dot(grid_div_mul);
+	int i = ijk.dot(grid_div_mul);
 #else
-	int32_t i = ijk[0] * grid_div_mul[0] + ijk[1] * grid_div_mul[1] + ijk[2] * grid_div_mul[2];
+	int i = ijk[0] * grid_div_mul[0] + ijk[1] * grid_div_mul[1] + ijk[2] * grid_div_mul[2];
 #endif
 	if (i >= total_box_num || i < 0)
 		i = -1;
@@ -184,9 +193,9 @@ bool zyk::CVoxel_grid::constructGrid()
 		return false;
 	if (input_point_cloud->empty())
 		return false;
-	for (int32_t i = 0; i < input_point_cloud->size(); ++i)
+	for (int i = 0; i < input_point_cloud->size(); ++i)
 	{
-		int32_t index = getPntBoxIndex(input_point_cloud->at(i));
+		int index = getPntBoxIndex(input_point_cloud->at(i));
 		if (index != -1)
 		{
 			if (box_vector[index] == NULL)
@@ -195,4 +204,159 @@ bool zyk::CVoxel_grid::constructGrid()
 		}
 	}
 	return true;
+}
+
+zyk::NeiboringIterator::NeiboringIterator()
+	:spaceDimmension(2)
+	, maxIndex(1)
+	, spaceSize(NULL)
+	, curPos(NULL)
+	, targetPos(NULL)
+	, div_mul(NULL)
+	, isdone(false)
+	, selfIncludeFlag(false)
+{
+	spaceSize = new int[spaceDimmension];
+	curPos = new int[spaceDimmension];
+	targetPos = new int[spaceDimmension];
+	div_mul = new int[spaceDimmension];
+	memset(spaceSize, 1, spaceDimmension);
+	memset(curPos, 0, spaceDimmension);
+	memset(targetPos, 0, spaceDimmension);
+	memset(div_mul, 1, spaceDimmension);
+}
+
+
+zyk::NeiboringIterator::NeiboringIterator(int* Size, int spaceDim)
+	:spaceDimmension(spaceDim)
+	,maxIndex(1)
+	,isdone(false)
+	,selfIncludeFlag(false)
+{
+	//error input check
+	assert(Size != NULL && spaceDim>0);
+
+	spaceSize = new int[spaceDimmension];
+	div_mul[0] = 1;
+	for (int i = 0; i < spaceDimmension; ++i) {	
+		spaceSize[i] = Size[i];
+		if(i<spaceDimmension-1)
+			div_mul[i + 1] = div_mul[i] * spaceSize[i];
+
+		assert(div_mul[i] > 0);
+	}
+	maxIndex *= div_mul[spaceDimmension-1]*spaceSize[spaceDimmension-1];
+	curPos = new int[spaceDimmension];
+	memset(curPos, 0, spaceDimmension);
+	memset(targetPos, 0, spaceDimmension);
+}
+
+zyk::NeiboringIterator::~NeiboringIterator()
+{
+	if (spaceSize != NULL)
+		delete spaceSize;
+	if (curPos != NULL)
+		delete curPos;
+	if (targetPos != NULL)
+		delete targetPos;
+	if (div_mul != NULL)
+		delete div_mul;
+	div_mul = targetPos = curPos = spaceSize = NULL;
+}
+
+zyk::NeiboringIterator& zyk::NeiboringIterator::operator++()
+{
+	if (!isdone) {
+		for (int i = 0; i < spaceDimmension; ++i) {
+			curPos[i]++;
+			if (curPos[i] > targetPos[i] + 1 || curPos[i] >= spaceSize[i]) {
+				if (i == spaceDimmension - 1) {
+					isdone = true;
+					break;
+				}
+				curPos[i] = targetPos[i] - 1;
+				if (curPos[i] < 0)
+					curPos[i] = 0;
+
+			}
+			else
+				break;
+		}	
+
+	}
+	return *this;
+}
+
+int zyk::NeiboringIterator::getIndex()
+{
+	int res = 0;
+	bool same = true;
+	for (int i = 0; i < spaceDimmension; ++i) {
+		res += div_mul[i] * curPos[i];
+		if (same && curPos[i] != targetPos[i])
+			same = false;
+	}
+	return res;
+}
+
+void zyk::NeiboringIterator::setTarget(int targetIndex)
+{
+	assert(targetIndex < maxIndex && targetIndex >= 0);
+	for (int i = 0; i < spaceDimmension; ++i) {
+		targetPos[spaceDimmension - i - 1] = targetIndex / div_mul[spaceDimmension - i - 1];
+		if (i < spaceDimmension - 1)
+			targetIndex -= targetPos[spaceDimmension - i - 1] * div_mul[spaceDimmension - i - 1];
+		curPos[i] = targetPos[i] - 1;
+		if (curPos[i] < 0)
+			curPos[i] = 0;
+	}
+	isdone = false;
+}
+
+
+void zyk::NeiboringIterator::setTarget(int* pos)
+{
+	for (int i = 0; i < spaceDimmension; ++i) {
+		assert(pos[i] >= 0 && pos[i] < spaceSize[i]);
+		targetPos[i] = pos[i];
+		curPos[i] = targetPos[i] - 1;
+		if (curPos[i] < 0)
+			curPos[i] = 0;
+	}
+}
+
+void zyk::getNeiboringBoxIndex3D(const Eigen::Vector3i& currentCoord, const Eigen::Vector3i& grid_div, vector<int>& out_vec)
+{
+	vector<int>box_index;
+	Eigen::Vector3i grid_div_mul(1, grid_div(0), grid_div(0)*grid_div(1));
+	for (int i = -1; i < 2; i++)
+	{
+		if (currentCoord(0) + i < 0 || currentCoord(0) + i >= grid_div(0))
+			continue;
+		for (int j = -1; j < 2; j++)
+		{
+			if (currentCoord(1) + j < 0 || currentCoord(1) + j >= grid_div(1))
+				continue;
+			for (int k = -1; k < 2; k++)
+			{
+				if (currentCoord(2) + k < 0 || currentCoord(2) + k >= grid_div(2))
+					continue;
+				if (i == 0 && j == 0 && k == 0)
+					continue;
+				out_vec.push_back((currentCoord + Eigen::Vector3i(i, j, k)).dot(grid_div_mul));
+			}
+		}
+	}
+}
+
+void zyk::getNeiboringBoxIndex3D(int currentIndex, const Eigen::Vector3i& grid_div, vector<int>& out_vec)
+{
+	Eigen::Vector3i div_mul(1, grid_div(0), grid_div(0)*grid_div(1));
+	int k = currentIndex / div_mul(2);
+	currentIndex -= k*div_mul(2);
+	int j = currentIndex / div_mul(1);
+	currentIndex -= j*div_mul(1);
+	int i = currentIndex;
+	Eigen::Vector3i coord(i, j, k);
+	getNeiboringBoxIndex3D(coord, grid_div, out_vec);
 }

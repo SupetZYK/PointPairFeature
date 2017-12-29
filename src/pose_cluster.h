@@ -10,6 +10,7 @@ namespace zyk
 		Eigen::Affine3f mean_transformation;
 		//¸¨Öú
 		Eigen::Vector3f mean_rot, mean_trans, first_trans, first_axis;
+		Eigen::Quaternionf first_q;
 		float first_angle;
 	public:
 		//pose_cluster(){};

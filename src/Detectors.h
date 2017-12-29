@@ -21,6 +21,8 @@ namespace zyk{
 class ZYK_EXPORTS CDetectModel3D
 {
 	friend class CDetectors3D;
+	
+
 public:
 	/** struct for detect options
 	*@ downSampleRatio, 0.05 by default, relative to the diameter of the model bounding box
@@ -103,6 +105,8 @@ protected:
 private:
 	zyk::PPF_Space* p_PPF;
 };
+
+
 
 /** 3D detector class
 */

@@ -48,23 +48,7 @@ typedef pcl::Normal NormalType;
 typedef pcl::ReferenceFrame RFType;
 
 
-namespace zyk
-{
-	struct box
-	{
-		//存储盒子中的点的index
-	public:
-		void putin(int32_t idx) { this->pnts_index.push_back(idx); };
-		int32_t size() { return this->pnts_index.size(); };
-		//std::vector<int32_t>*getIndices(){ return &pnts_index; };
-		const int32_t operator[](int32_t i) const { return pnts_index[i]; };
-	private:
-		std::vector<int32_t> pnts_index;
-	};
 
-	ZYK_EXPORTS void getNeiboringBoxIndex3D(int32_t currentIndex, const Eigen::Vector3i& grid_div, std::vector<int32_t>& out_vec);
-	ZYK_EXPORTS void getNeiboringBoxIndex3D(const Eigen::Vector3i& currentCoord, const Eigen::Vector3i& grid_div, std::vector<int32_t>& out_vec);
-}
 //ZYK_EXPORTS bool downSamplePointCloud(const pcl::PointCloud<PointType>::Ptr &scene, const double relSamplingDistance,
 //	pcl::PointCloud<PointType>::Ptr &outCloud, const int method = 1);
 ZYK_EXPORTS pcl::IndicesPtr uniformDownSamplePoint(pcl::PointCloud<PointType>::Ptr pointcloud, double relSamplingDistance, pcl::PointCloud<PointType>::Ptr outCloud);

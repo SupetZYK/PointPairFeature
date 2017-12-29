@@ -99,7 +99,7 @@ pcl::IndicesPtr uniformDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr 
 	outNormal->height = 1;
 	outNormal->is_dense = true;
 	outNormal->points.resize(selectedIndex->size());
-	for (int32_t i = 0; i < selectedIndex->size(); i++)
+	for (int i = 0; i < selectedIndex->size(); i++)
 		outNormal->points[i]= pointNormal->points[selectedIndex->at(i)];
 	return selectedIndex;
 }
@@ -118,7 +118,7 @@ bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, p
 	outNormal->height = 1;
 	outNormal->is_dense = true;
 	outNormal->points.resize(selectedIndex.size());
-	for (int32_t i = 0; i < selectedIndex.size(); i++)
+	for (int i = 0; i < selectedIndex.size(); i++)
 		outNormal->points[i] = pointNormal->points[selectedIndex[i]];
 	return true;
 }
@@ -192,41 +192,6 @@ bool readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr outClo
 //
 //}
 
-void zyk::getNeiboringBoxIndex3D(const Eigen::Vector3i& currentCoord, const Eigen::Vector3i& grid_div,vector<int32_t>& out_vec)
-{
-		vector<int32_t>box_index;
-		Eigen::Vector3i grid_div_mul(1, grid_div(0), grid_div(0)*grid_div(1));
-		for (int32_t i = -1; i < 2; i++)
-		{
-			if (currentCoord(0) + i<0 || currentCoord(0) + i >= grid_div(0))
-				continue;
-			for (int32_t j = -1; j < 2; j++)
-			{
-				if (currentCoord(1) + j<0 || currentCoord(1) + j >= grid_div(1))
-					continue;
-				for (int32_t k = -1; k < 2; k++)
-				{
-					if (currentCoord(2) + k<0 || currentCoord(2) + k >= grid_div(2))
-						continue;
-					if (i == 0 && j == 0 && k == 0)
-						continue;
-					out_vec.push_back((currentCoord + Eigen::Vector3i(i, j, k)).dot(grid_div_mul));
-				}
-			}
-		}
-}
-
-void zyk::getNeiboringBoxIndex3D(int32_t currentIndex, const Eigen::Vector3i& grid_div, vector<int32_t>& out_vec)
-{
-	Eigen::Vector3i div_mul(1, grid_div(0), grid_div(0)*grid_div(1));
-	int32_t k = currentIndex / div_mul(2);
-	currentIndex -= k*div_mul(2);
-	int32_t j = currentIndex / div_mul(1);
-	currentIndex -= j*div_mul(1);
-	int32_t i = currentIndex;
-	Eigen::Vector3i coord(i, j, k);
-	getNeiboringBoxIndex3D(coord, grid_div, out_vec);
-}
 
 void transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCloud<NormalType>&normals_out, const Eigen::Affine3f& transform)
 {

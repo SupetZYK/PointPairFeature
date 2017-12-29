@@ -1,4 +1,4 @@
-#include <common.h>
+ï»¿#include <common.h>
 #include "PPFFeature.h"
 #include "pose_cluster.h"
 //pcl
@@ -273,7 +273,7 @@ main(int argc, char *argv[])
 			pcl::NormalEstimationOMP<PointType, NormalType> norm_est;
 			norm_est.setIndices(sampled_index_ptr);
 			//norm_est.setKSearch(20);
-			norm_est.setRadiusSearch(scene_ss_);
+			norm_est.setRadiusSearch(model_feature_space.model_res);
 			norm_est.setInputCloud(scene);
 			norm_est.compute(*scene_keyNormals);
 		}
@@ -287,10 +287,9 @@ main(int argc, char *argv[])
 			mls.setComputeNormals(true);
 			mls.setPolynomialFit(true);
 			mls.setSearchMethod(tree);
-			mls.setSearchRadius(0.7*scene_ss_);
+			mls.setSearchRadius(model_feature_space.model_res);
 			//mls.setSearchRadius(0.7*model_feature_space.model_res);
 			mls.process(*scene_keypoints);
-
 			scene_keyNormals = mls.getNormals();
 			for (size_t i = 0; i < scene_keyNormals->size(); ++i)
 			{
@@ -298,7 +297,7 @@ main(int argc, char *argv[])
 			}
 		}
 
-		cout << "Normal compute complete£¡" << endl;
+		cout << "Normal compute completeï¼" << endl;
 	}
 	else
 	{
@@ -435,10 +434,18 @@ main(int argc, char *argv[])
 					cout << pose_clusters[i].transformations[j].matrix() << endl;
 					Eigen::AngleAxisf tmp_rot(pose_clusters[i].transformations[j].rotation());
 					float angle = tmp_rot.angle();
-					if (angle>2 * M_PI)angle -= 2 * M_PI;
-					if (angle < 0)angle += 2 * M_PI;
-					Eigen::Vector3f tmp_angle_axis = angle*tmp_rot.axis();
+					Eigen::Vector3f axis = tmp_rot.axis();
+					std::cout << "Ã¯nitial angle: " << angle << " Initial rot: " << axis.transpose() << std::endl;
+
+					if (fabs(angle - pose_clusters[i].first_angle) > 2*angle_thresh) {
+						angle = 2 * M_PI - angle;
+					}
+					if (axis.dot(pose_clusters[i].first_axis) < 0)
+						axis = -axis;
+					Eigen::Vector3f tmp_angle_axis = angle*axis;
 					cout << "Rot:" << tmp_angle_axis.transpose() << endl;
+					Eigen::Quaternionf q(pose_clusters[i].transformations[j].rotation());
+					cout << "Quatanion: " << q.w() <<" "<<q.vec().transpose()<< endl;
 					//tmp_mean_rot_axis+=tmp_angle_axis;
 				}
 
@@ -632,7 +639,7 @@ main(int argc, char *argv[])
 	//	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, ss_cloud.str());
 	//	viewer.spin();
 	//}
-	//for (int32_t i = 0; i < pose_clusters.size(); i++)
+	//for (int i = 0; i < pose_clusters.size(); i++)
 	//	delete pose_clusters[i];
   return (0);
 }

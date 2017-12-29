@@ -23,17 +23,13 @@ bool zyk::pose_cluster::checkAndPutIn(const Eigen::Affine3f& transformation, flo
 
 		Eigen::AngleAxisf tmp(mean_transformation.rotation());
 		//check tmp.angle()
-		float angle = tmp.angle();
-		//if(angle<0)
-		//	cout<<"angle <0 detect!"<<endl;
-		//if (angle > M_PI)
-			//angle -= 2 * M_PI;
-		//else if (angle < -M_PI)
-			//angle += 2 * M_PI;
-		first_angle = angle;
+		first_angle = tmp.angle();
 		first_axis = tmp.axis();
-		mean_rot = angle*first_axis;
+
+		first_q = Eigen::Quaternionf(mean_transformation.rotation());
+		mean_rot = first_angle*first_axis;
 		mean_trans = mean_transformation.translation();
+
 		return true;
 	}
 	
@@ -45,23 +41,70 @@ bool zyk::pose_cluster::checkAndPutIn(const Eigen::Affine3f& transformation, flo
 
 	Eigen::AngleAxisf trans_rot(transformation.rotation());
 	Eigen::Vector3f trans_tmp_rot;
+	//trans_tmp_rot = trans_rot.angle()*trans_rot.axis();
+	//float test_ang = trans_tmp_rot.norm();
+	//Eigen::Vector3f trans_tmp_axis = trans_tmp_rot / test_ang;
+	//float dot_res = abs(first_axis.dot(trans_tmp_axis));
+	//float cos_thresh = cos(angle_thresh);
+	//if (cos_thresh < dot_res) {
+	//	if (abs(2 * M_PI - test_ang - first_angle) < angle_thresh) {
+	//		trans_tmp_rot = -(2 * M_PI - test_ang)*trans_tmp_axis;
+	//	}
+	//	else if (abs(test_ang - first_angle) > angle_thresh) {
+	//		return false;
+	//	}
+	//}
+	//else
+	//	return false;
+
 	float angle = trans_rot.angle();
+	Eigen::Vector3f tst_axis = trans_rot.axis();
+
 	float res1 = fabs(angle - first_angle);
 	float res2 = fabs(2 * M_PI - angle - first_angle);
-	float res3 = first_axis.dot(trans_rot.axis());
+	float res3 = first_axis.dot(tst_axis);
 	float res4 = cos(angle_thresh);
-	if (res1<angle_thresh&&res3>res4)
+	//4 conditions
+	if (res1<angle_thresh && res3>res4)
 	{
-		trans_tmp_rot = angle*trans_rot.axis();
+		trans_tmp_rot = angle*tst_axis;
 	}
-	else if (res2 < angle_thresh&&res3 < -res4)
+	// this case angle is near 180 degree
+	else if (res1<angle_thresh && -res3>res4) {
+		trans_tmp_rot = (angle - 2 * M_PI)*tst_axis;
+	}
+	// this case angle is near 180 degree
+	else if (res2<angle_thresh && res3>res4) {
+		//trans_tmp_rot = (2 * M_PI - angle)*tst_axis;
+		trans_tmp_rot = angle*tst_axis;
+	}
+	else if (res2 < angle_thresh && -res3 > res4)
 	{
-		trans_tmp_rot = (angle - 2 * M_PI)*trans_rot.axis();
+		trans_tmp_rot = (angle - 2 * M_PI)*tst_axis;
 	}
 	else
 	{
 		return false;
 	}
+
+	//float angle = trans_rot.angle();
+	//float res1 = fabs(angle - first_angle);
+	//float res2 = fabs(2 * M_PI - angle - first_angle);
+	//float res3 = first_axis.dot(trans_rot.axis());
+	//float res4 = cos(angle_thresh);
+	//if (res1<angle_thresh && res3>res4)
+	//{
+	//	trans_tmp_rot = angle*trans_rot.axis();
+	//}
+	//else if (res2 < angle_thresh && -res3 > res4)
+	//{
+	//	trans_tmp_rot = (angle - 2 * M_PI)*trans_rot.axis();
+	//}
+	//else
+	//{
+	//	return false;
+	//}
+
 	//if (fabs(angle - first_angle) > angle_thresh)
 	//	return false;
 	//if (angle > M_PI)

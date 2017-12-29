@@ -235,7 +235,7 @@ main(int argc, char *argv[])
 
 	if (normal_reorient_switch_)
 	{
-		for (int32_t i = 0; i < compute_keyNormals->size(); ++i)
+		for (int i = 0; i < compute_keyNormals->size(); ++i)
 		{
 			Eigen::Vector3f pnt_temp = scene_keypoints->points[i].getVector3fMap();
 			Eigen::Vector3f normal_temp = compute_keyNormals->points[i].getNormalVector3fMap();

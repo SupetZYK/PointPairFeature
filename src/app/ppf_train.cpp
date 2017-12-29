@@ -161,7 +161,8 @@ main(int argc, char *argv[])
 
 		pcl::visualization::PCLVisualizer key_visual("Original Viewr");
 		key_visual.addCoordinateSystem(20);
-		key_visual.addPointCloudNormals<PointType, NormalType>(model, model_normals, 1, 10, "model_normal");
+		if (use_existing_normal_data_)
+			key_visual.addPointCloudNormals<PointType, NormalType>(model, model_normals, 1, 10, "model_normal");
 		key_visual.addPointCloud(model, pcl::visualization::PointCloudColorHandlerCustom<PointType>(model, 0.0, 0.0, 255.0), "model");
 		key_visual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4, "model_normal");
 		key_visual.spin();
@@ -238,7 +239,7 @@ main(int argc, char *argv[])
 
 	if (normal_reorient_switch_)
 	{
-		for (int32_t i = 0; i < model->size(); ++i)
+		for (int i = 0; i < model->size(); ++i)
 		{
 			Eigen::Vector3f pnt_temp = model->points[i].getVector3fMap();
 			Eigen::Vector3f normal_temp = model_normals->points[i].getNormalVector3fMap();
@@ -386,7 +387,7 @@ main(int argc, char *argv[])
 	model_size.push_back(model_height);
 	std::sort(model_size.begin(), model_size.end());
 	cout << "model_size after sort :";
-	for (int32_t i = 0; i < 3; i++)
+	for (int i = 0; i < 3; i++)
 		cout << model_size[i] << " \t";
 	cout << endl;
 
@@ -414,8 +415,8 @@ main(int argc, char *argv[])
 	//
 	// compute no empty ppf box nunber
 	//
-	int32_t cnt = 0;
-	for (int32_t i = 0; i < model_feature_space.getBoxVector()->size(); ++i)
+	int cnt = 0;
+	for (int i = 0; i < model_feature_space.getBoxVector()->size(); ++i)
 	{
 		if (model_feature_space.getBoxVector()->at(i) != NULL)
 			cnt++;

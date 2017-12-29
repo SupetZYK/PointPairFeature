@@ -13,15 +13,15 @@ namespace zyk
 {
 	struct ZYK_EXPORTS PPF
 	{
-		int32_t first_index;
-		int32_t second_index;
+		int first_index;
+		int second_index;
 		pcl::PPFSignature ppf;
 		float weight = 1;
 	};
 
 	struct PPF_Accumulator
 	{
-		PPF_Accumulator(int32_t pnt_number, int32_t rot_angle_div){ acumulator = Eigen::MatrixXf(pnt_number, rot_angle_div); acumulator.setConstant(0); };
+		PPF_Accumulator(int pnt_number, int rot_angle_div){ acumulator = Eigen::MatrixXf(pnt_number, rot_angle_div); acumulator.setConstant(0); };
 		Eigen::MatrixXf acumulator;
 	};
 
@@ -55,8 +55,8 @@ namespace zyk
 		static bool getPoseFromPPFCorresspondence(PointType& model_point, NormalType& model_normal, PointType& scene_point, NormalType&scene_normal, float alpha, Eigen::Affine3f& transformation);
 		//test speed
 		void getppfBoxCoord(PPF& ppf, Eigen::Vector4i& ijk);
-		void getppfBoxCoord(PPF& ppf, int32_t* ijk);
-		int32_t getppfBoxIndex(PPF& ppf);
+		void getppfBoxCoord(PPF& ppf, int* ijk);
+		int getppfBoxIndex(PPF& ppf);
 		vector<box*>* getBoxVector() { return &ppf_box_vector; };
 		vector<PPF>* getPPFVector() { return &ppf_vector; };
 
@@ -114,10 +114,10 @@ namespace zyk
 		pcl::PointCloud<PointType>::Ptr centered_point_cloud;
 		pcl::PointCloud<NormalType>::Ptr input_point_normal;
 		//grid property
-		int32_t grid_f1_div;
-		int32_t grid_f2_div;
-		int32_t grid_f3_div;
-		int32_t grid_f4_div;
+		int grid_f1_div;
+		int grid_f2_div;
+		int grid_f3_div;
+		int grid_f4_div;
 		//grids two limits
 		Eigen::Array4f min_p;
 		Eigen::Array4f max_p;
