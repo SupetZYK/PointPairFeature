@@ -916,6 +916,7 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 	}
 }
 
+
 void zyk::PPF_Space::recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters)
 {
 	
@@ -930,6 +931,13 @@ void zyk::PPF_Space::recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointClo
 	vector<zyk::box*>* box_vector = grid.getBox_vector();
 	if (ang_thresh < 0)ang_thresh = M_PI_2;
 	float cos_ang_thresh = cos(ang_thresh);
+
+#ifdef use_neiboringIterator
+	zyk::NeiboringIterator niter(grid_div.data(), 3);
+#else // use_neiboringIterator
+	vector<int>neiboringBoxIndexVector;
+	neiboringBoxIndexVector.reserve(30);
+#endif
 	for (int num = 0; num < pose_clusters.size(); ++num)
 	{
 		float score = 0;
@@ -945,16 +953,25 @@ void zyk::PPF_Space::recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointClo
 			NormalType mn = rotated_normal->at(i);
 
 			/////////get neighboring
-			vector<int>neiboringBoxIndexVector;
-			neiboringBoxIndexVector.reserve(30);
 			//for convenience, push back current index too!
+#ifdef use_neiboringIterator
+			niter.setTarget(pnt_box_index);
+#else // use_neiboringIterator
+			neiboringBoxIndexVector.clear();
 			neiboringBoxIndexVector.push_back(pnt_box_index);
 			zyk::getNeiboringBoxIndex3D(pnt_box_index, grid_div, neiboringBoxIndexVector);
-
+#endif
 			bool found = false;
+#ifdef use_neiboringIterator
+			for (; !niter.isDone() && !found; ++niter) 
+			{
+				int neiboringBoxIndex = niter.getIndex();
+
+#else
 			for (int j = 0; j < neiboringBoxIndexVector.size() && !found; ++j)
 			{
 				int neiboringBoxIndex = neiboringBoxIndexVector[j];
+#endif
 				zyk::box*p_current_neiboring_point_box = box_vector->at(neiboringBoxIndex);
 				if (p_current_neiboring_point_box == NULL)
 					continue;

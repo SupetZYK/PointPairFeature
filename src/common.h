@@ -41,7 +41,7 @@
 #  define ZYK_EXPORTS
 #endif
 
-//#define use_eigen
+
 
 typedef pcl::PointXYZ PointType;
 typedef pcl::Normal NormalType;

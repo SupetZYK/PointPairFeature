@@ -9,6 +9,12 @@
 #include "boost/archive/binary_oarchive.hpp"  
 #include "boost/archive/binary_iarchive.hpp"  
 #include <boost/serialization/export.hpp> 
+
+//some option for test
+//#define use_eigen
+#define use_neiboringIterator
+
+
 namespace zyk
 {
 	struct ZYK_EXPORTS PPF

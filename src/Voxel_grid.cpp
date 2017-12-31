@@ -207,36 +207,37 @@ bool zyk::CVoxel_grid::constructGrid()
 }
 
 zyk::NeiboringIterator::NeiboringIterator()
-	:spaceDimmension(2)
+	: spaceDimmension(2)
 	, maxIndex(1)
-	, spaceSize(NULL)
-	, curPos(NULL)
-	, targetPos(NULL)
-	, div_mul(NULL)
-	, isdone(false)
-	, selfIncludeFlag(false)
+	, spaceSize(2, 1)
+	, curPos(2, 0)
+	, curIndex(0)
+	, targetPos(2, 0)
+	, targetIndex(0)
+	, div_mul(2, 1)
+	, stateFlag(0)
+	, min_(2, 0)
+	, max_(2, 1)
 {
-	spaceSize = new int[spaceDimmension];
-	curPos = new int[spaceDimmension];
-	targetPos = new int[spaceDimmension];
-	div_mul = new int[spaceDimmension];
-	memset(spaceSize, 1, spaceDimmension);
-	memset(curPos, 0, spaceDimmension);
-	memset(targetPos, 0, spaceDimmension);
-	memset(div_mul, 1, spaceDimmension);
 }
 
 
 zyk::NeiboringIterator::NeiboringIterator(int* Size, int spaceDim)
-	:spaceDimmension(spaceDim)
-	,maxIndex(1)
-	,isdone(false)
-	,selfIncludeFlag(false)
+	: spaceDimmension(spaceDim)
+	, maxIndex(1)
+	, spaceSize(spaceDim, 1)
+	, curPos(spaceDim, 0)
+	, curIndex(0)
+	, targetPos(spaceDim, 0)
+	, targetIndex(0)
+	, div_mul(spaceDim, 1)
+	, stateFlag(0)
+	, min_(spaceDim, 0)
+	, max_(spaceDim, 1)
 {
 	//error input check
 	assert(Size != NULL && spaceDim>0);
 
-	spaceSize = new int[spaceDimmension];
 	div_mul[0] = 1;
 	for (int i = 0; i < spaceDimmension; ++i) {	
 		spaceSize[i] = Size[i];
@@ -244,85 +245,101 @@ zyk::NeiboringIterator::NeiboringIterator(int* Size, int spaceDim)
 			div_mul[i + 1] = div_mul[i] * spaceSize[i];
 
 		assert(div_mul[i] > 0);
+		max_[i] = Size[i] - 1;
 	}
 	maxIndex *= div_mul[spaceDimmension-1]*spaceSize[spaceDimmension-1];
-	curPos = new int[spaceDimmension];
-	memset(curPos, 0, spaceDimmension);
-	memset(targetPos, 0, spaceDimmension);
 }
 
 zyk::NeiboringIterator::~NeiboringIterator()
 {
-	if (spaceSize != NULL)
-		delete spaceSize;
-	if (curPos != NULL)
-		delete curPos;
-	if (targetPos != NULL)
-		delete targetPos;
-	if (div_mul != NULL)
-		delete div_mul;
-	div_mul = targetPos = curPos = spaceSize = NULL;
 }
 
 zyk::NeiboringIterator& zyk::NeiboringIterator::operator++()
 {
-	if (!isdone) {
-		for (int i = 0; i < spaceDimmension; ++i) {
-			curPos[i]++;
-			if (curPos[i] > targetPos[i] + 1 || curPos[i] >= spaceSize[i]) {
-				if (i == spaceDimmension - 1) {
-					isdone = true;
+	if (!isDone()) {
+		if (firstOperation()) {
+			for (int i = 0; i < spaceDimmension; ++i) {
+				curPos[i] = min_[i];
+			}
+			int res = 0;
+			for (int i = 0; i < spaceDimmension; ++i) {
+				res += curPos[i] * div_mul[i];
+			}
+			curIndex = res;
+			stateFlag |= 0x02;
+		}
+		else 
+			for (int i = 0; i < spaceDimmension; ++i) {
+				if (++curPos[i]>max_[i]) {
+					if (i == spaceDimmension - 1) {
+						stateFlag |= 0x01;
+						break;
+					}
+					curPos[i] = min_[i];
+					curIndex -= (max_[i] - min_[i])*div_mul[i];
+				}
+				else {
+					curIndex += div_mul[i];
 					break;
 				}
-				curPos[i] = targetPos[i] - 1;
-				if (curPos[i] < 0)
-					curPos[i] = 0;
-
+					
 			}
-			else
-				break;
-		}	
-
+		//int res = 0;
+		//for (int i = 0; i < spaceDimmension; ++i) {
+		//	res += curPos[i] * div_mul[i];
+		//}
+		//curIndex = res;
+		if (curIndex == targetIndex)
+			return(++(*this));
 	}
 	return *this;
 }
 
 int zyk::NeiboringIterator::getIndex()
 {
-	int res = 0;
-	bool same = true;
-	for (int i = 0; i < spaceDimmension; ++i) {
-		res += div_mul[i] * curPos[i];
-		if (same && curPos[i] != targetPos[i])
-			same = false;
-	}
-	return res;
+	//int res = 0;
+	//for (int i = 0; i < spaceDimmension; ++i) {
+	//	res += div_mul[i] * curPos[i];
+	//}
+	//if (!firstOperation() && res == targetIndex) {
+	//	++(*this);
+	//	res = getIndex();
+	//}
+	//return res;
+	return curIndex;
 }
 
-void zyk::NeiboringIterator::setTarget(int targetIndex)
+void zyk::NeiboringIterator::setTarget(int targetIdx)
 {
-	assert(targetIndex < maxIndex && targetIndex >= 0);
+	assert(targetIdx < maxIndex && targetIdx >= 0);
+	targetIndex = targetIdx;
+	curIndex = targetIndex;
 	for (int i = 0; i < spaceDimmension; ++i) {
-		targetPos[spaceDimmension - i - 1] = targetIndex / div_mul[spaceDimmension - i - 1];
+		int idx = spaceDimmension - i - 1;
+		targetPos[idx] = targetIdx / div_mul[idx];
 		if (i < spaceDimmension - 1)
-			targetIndex -= targetPos[spaceDimmension - i - 1] * div_mul[spaceDimmension - i - 1];
-		curPos[i] = targetPos[i] - 1;
-		if (curPos[i] < 0)
-			curPos[i] = 0;
+			targetIdx -= targetPos[idx] * div_mul[idx];
+		curPos[idx] = targetPos[idx];
+		min_[idx] = std::max(0, targetPos[idx] - 1);
+		max_[idx] = std::min(spaceSize[idx] - 1, targetPos[idx] + 1);
 	}
-	isdone = false;
+	stateFlag = 0;
 }
 
 
 void zyk::NeiboringIterator::setTarget(int* pos)
 {
+	int tmp = 0;
 	for (int i = 0; i < spaceDimmension; ++i) {
 		assert(pos[i] >= 0 && pos[i] < spaceSize[i]);
 		targetPos[i] = pos[i];
-		curPos[i] = targetPos[i] - 1;
-		if (curPos[i] < 0)
-			curPos[i] = 0;
+		tmp += targetPos[i] * div_mul[i];
+
+		min_[i] = std::max(0, targetPos[i] - 1);
+		max_[i] = std::min(spaceSize[i] - 1, targetPos[i] + 1);
 	}
+	targetIndex = tmp;
+	stateFlag = 0;
 }
 
 void zyk::getNeiboringBoxIndex3D(const Eigen::Vector3i& currentCoord, const Eigen::Vector3i& grid_div, vector<int>& out_vec)

@@ -89,7 +89,7 @@ namespace zyk
 	};
 	/*Class that used to iterate the neiboring of a specific voxel in N-dimmensional space
 	**/
-	class NeiboringIterator 
+	class ZYK_EXPORTS NeiboringIterator
 	{
 	public:
 		/*Default construct
@@ -110,22 +110,32 @@ namespace zyk
 		~NeiboringIterator();
 		/*Jump to next position
 		**/
-		NeiboringIterator& operator++ ();
+		NeiboringIterator& operator++();
 		/*function used to signify whether the loop is done
 		**/
-		bool isDone() { return isdone; };
+		inline bool isDone() { return stateFlag&0x01; };
+		inline bool firstOperation() { return !(stateFlag & 0x02); };
 		/*Get the current index of pos
 		**/
 		int getIndex();
 	private:
-		int* spaceSize;
+		vector<int> spaceSize;
 		int spaceDimmension;
-		int* curPos;
-		int* targetPos;
-		int* div_mul;
+		vector<int> curPos;
+		int curIndex;
+		vector<int> targetPos;
+		int targetIndex;
+		vector<int> div_mul;
 		int maxIndex;
-		bool isdone;
-		bool selfIncludeFlag;
+
+		//for fast loop
+		vector<int> min_;
+		vector<int> max_;
+		/*
+		* first: done flag 1, done,
+		* second: first operation flag 0, first operation 
+		**/
+		int stateFlag;
 	};
 
 }
