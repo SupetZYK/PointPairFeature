@@ -2,6 +2,9 @@
 #include <pcl/features/ppf.h>
 #include <pcl/common/transforms.h>
 #include <fstream>
+#ifdef vote_flag_use_map
+#include <unordered_map>
+#endif
 using namespace zyk;
 
 
@@ -214,14 +217,41 @@ float zyk::PPF_Space::computeAlpha(const PointType& first_pnt, const NormalType&
 {
 	float rotation_angle = acosf(first_normal.normal_x);
 	bool parallel_to_x = (first_normal.normal_y > -FLT_EPSILON && first_normal.normal_y<FLT_EPSILON && first_normal.normal_z>-FLT_EPSILON && first_normal.normal_z < FLT_EPSILON);
-	//TO DO, change to total array
+	//@todo, change to total array
+	//finished 2017 12 31 zyk
+#ifdef use_eigen
 	const Eigen::Vector3f& rotation_axis = (parallel_to_x) ? (Eigen::Vector3f::UnitY()) : (first_normal.getNormalVector3fMap().cross(Eigen::Vector3f::UnitX()).normalized());
 	Eigen::AngleAxisf rotation_mg(rotation_angle, rotation_axis);
-
-	const Eigen::Vector3f& second_point_transformed = rotation_mg * (Eigen::Vector3f(second_pnt.x-first_pnt.x,second_pnt.y-first_pnt.y,second_pnt.z-first_pnt.z));
+	const Eigen::Vector3f& second_point_transformed = rotation_mg * (Eigen::Vector3f(second_pnt.x - first_pnt.x, second_pnt.y - first_pnt.y, second_pnt.z - first_pnt.z));
 	float angle = atan2f(-second_point_transformed(2), second_point_transformed(1));
+
 	if (sin(angle) * second_point_transformed(2) > 0.0f)
 		angle *= (-1);
+#else
+	float nx = 0, ny = 1, nz = 0;
+	if (!parallel_to_x) {
+		ny = first_normal.normal_z;
+		nz = -first_normal.normal_y;
+		float tmp = sqrt(ny*ny + nz*nz);
+		ny /= tmp;
+		nz /= tmp;
+	}
+	float X = second_pnt.x - first_pnt.x,
+		Y = second_pnt.y - first_pnt.y,
+		Z = second_pnt.z - first_pnt.z,
+		stheta = sinf(rotation_angle),
+		ctheta = cosf(rotation_angle),
+		one_ctheta = (1 - ctheta);
+	float Y_out = (one_ctheta*nx*ny + stheta*nz)*X
+		+ (ctheta + one_ctheta*ny*ny)*Y
+		+ (one_ctheta*ny*nz - stheta*nx)*Z;
+	float Z_out = (one_ctheta*nx*nz - stheta*ny)*X
+		+ (one_ctheta*ny*nz + stheta*nx)*Y
+		+ (ctheta + one_ctheta*nz*nz)*Z;
+	float angle = atan2f(-Z_out, Y_out);
+	if (sin(angle) * Z_out > 0.0f)
+		angle *= (-1);
+#endif
 	return angle;
 
 }
@@ -670,7 +700,11 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 	int tst_cnt1 = 0;
 	int tst_cnt2 = 0;
 	///////// vote flag, See Going further with ppf
+#ifdef vote_flag_use_map
+	unordered_map<int, int>vote_flag;
+#else
 	vector<int>vote_flag(ppf_box_vector.size(), 0);
+#endif
 	//init some vectors before loop
 	vector<int>neiboringBoxIndexVector;
 	neiboringBoxIndexVector.reserve(50);
@@ -713,7 +747,11 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 			const PointType& rp = scene->at(reference_pnt_index);
 			const NormalType& rn = scene_normals->at(reference_pnt_index);
 #endif
+#ifdef vote_flag_use_map
+			vote_flag.clear();
+#else
 			vote_flag.assign(ppf_vector.size(), 0);
+#endif
 			// loop through neighboring boxes to get scene pnt
 			for (int cnt2 = 0; cnt2 < neiboringBoxIndexVector.size(); ++cnt2)
 			{

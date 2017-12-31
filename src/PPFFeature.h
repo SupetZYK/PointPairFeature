@@ -13,7 +13,7 @@
 //some option for test
 //#define use_eigen
 #define use_neiboringIterator
-
+#define vote_flag_use_map
 
 namespace zyk
 {
