@@ -241,10 +241,15 @@ main(int argc, char *argv[])
 	float model_length=model_feature_space.model_size[0];
 	float model_width=model_feature_space.model_size[1];
 	float model_height=model_feature_space.model_size[2];
+
 	std::cout << "Model resolution: " << model_feature_space.model_res << std::endl;
 	std::cout << "Model length: " << model_length << std::endl;
 	std::cout << "Model width: " << model_width << std::endl;
 	std::cout << "Model height: " << model_height << std::endl;
+
+	//compute original scene resolution
+	double original_scene_res = computeCloudResolution(scene);
+	std::cout << "Original scene resolution is: " << original_scene_res << std::endl;
 	double scene_ss_ = 1;
 	if (scene_ds_ < 0)
 		scene_ss_ = model_feature_space.model_res;
@@ -333,7 +338,8 @@ main(int argc, char *argv[])
 	//
 
 	
-	vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> pose_clusters;
+	vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > pose_clusters;
+	vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > refined_pose_clusters;
 	cout <<">>Begin match!"<<endl;
 	cout <<">cluster angle thresh: "<<angle_thresh<<endl;
 	cout <<">cluster distance thresh: "<<cluster_dis_thresh<<endl;
@@ -348,67 +354,8 @@ main(int argc, char *argv[])
 	
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
-	//
-	//  Visualization
-	//
-
-	//pcl::visualization::PCLVisualizer viewer ("Correspondence Grouping");
-	//pcl::visualization::PointCloudColorHandlerCustom<PointType> scene_color_handler(scene, 0, 255, 0);
-	//viewer.addPointCloud(scene, scene_color_handler, "scene_cloud");
-
-	//pcl::PointCloud<PointType>::Ptr off_scene_model (new pcl::PointCloud<PointType> ());
-	//pcl::PointCloud<PointType>::Ptr off_scene_model_keypoints (new pcl::PointCloud<PointType> ());
-
-	//if (show_correspondences_ || show_keypoints_)
-	//{
-	//  //  We are translating the model so that it doesn't end in the middle of the scene representation
-	//  pcl::transformPointCloud (*model, *off_scene_model, Eigen::Vector3f (-1,0,0), Eigen::Quaternionf (1, 0, 0, 0));
-	//  pcl::transformPointCloud (*model_keypoints, *off_scene_model_keypoints, Eigen::Vector3f (-1,0,0), Eigen::Quaternionf (1, 0, 0, 0));
-
-	//  pcl::visualization::PointCloudColorHandlerCustom<PointType> off_scene_model_color_handler (off_scene_model, 255, 255, 128);
-	//  viewer.addPointCloud (off_scene_model, off_scene_model_color_handler, "off_scene_model");
-	//}
-
-	//if (show_keypoints_)
-	//{
-	//  pcl::visualization::PointCloudColorHandlerCustom<PointType> scene_keypoints_color_handler (scene_keypoints, 0, 0, 255);
-	//  viewer.addPointCloud (scene_keypoints, scene_keypoints_color_handler, "scene_keypoints");
-	//  viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "scene_keypoints");
-
-	//  pcl::visualization::PointCloudColorHandlerCustom<PointType> off_scene_model_keypoints_color_handler (off_scene_model_keypoints, 0, 0, 255);
-	//  viewer.addPointCloud (off_scene_model_keypoints, off_scene_model_keypoints_color_handler, "off_scene_model_keypoints");
-	//  viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "off_scene_model_keypoints");
-	//}
-
-	//test viewer
-	//{
-	//	pcl::visualization::PCLVisualizer viewer("Correspondence Grouping");
-	//	pcl::visualization::PointCloudColorHandlerCustom<PointType> scene_color_handler(scene, 0, 255, 0);
-	//	viewer.addPointCloud(scene, scene_color_handler, "scene_cloud");
-
-	//	pcl::PointCloud<PointType>::Ptr off_scene_model(new pcl::PointCloud<PointType>());
-	//	pcl::PointCloud<PointType>::Ptr off_scene_model_keypoints(new pcl::PointCloud<PointType>());
-
-	//	pcl::PointCloud<PointType>::Ptr rotated_model1(new pcl::PointCloud<PointType>());
-	//	pcl::PointCloud<PointType>::Ptr rotated_model2(new pcl::PointCloud<PointType>());
-	//	Eigen::Affine3f t1 = Eigen::Affine3f::Identity();
-	//	t1.translate(Eigen::Vector3f(-74, 86, 1431));
-	//	cout << t1.matrix() << endl;
-	//	Eigen::Affine3f t2 = Eigen::Affine3f::Identity();
-	//	t2.translate(Eigen::Vector3f(-152, 46, 1422));
-	//	pcl::transformPointCloud(*model, *rotated_model1, t1);
-	//	pcl::transformPointCloud(*model, *rotated_model2, t2);
-	//	pcl::visualization::PointCloudColorHandlerCustom<PointType> rotated_model_color_handler1(rotated_model1, 255, 0, 0);
-	//	pcl::visualization::PointCloudColorHandlerCustom<PointType> rotated_model_color_handler2(rotated_model2, 255, 0, 0);
-	//	viewer.addPointCloud(rotated_model1, rotated_model_color_handler1, "r1");
-	//	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "r1");
-	//	viewer.addPointCloud(rotated_model2, rotated_model_color_handler2, "r2");
-	//	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "r2");
-	//	viewer.spin();
-	//}
-
-
 	int number = pose_clusters.size();
+	bool enable_icp = false;
 	////if (number > 12) number = 12;
 	if(show_cluster_result_)
 	{
@@ -496,6 +443,16 @@ main(int argc, char *argv[])
 				pcl::visualization::PointCloudColorHandlerCustom<PointType> scene_color_handler(scene, 0, 255, 0);
 				viewer.addPointCloud(scene, scene_color_handler, "scene_cloud");
 				cout << ">>Show vote thresh is : " << show_vote_thresh << endl;
+
+				//
+				//check whether icp is needed
+				//
+				if (enable_icp) {
+					refined_pose_clusters.clear();
+					std::cout << "Start ICP..." << std::endl;
+					model_feature_space.ICP_Refine(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res);
+					std::cout << "ICP finish!" << std::endl;
+				}
 				for (size_t i = 0; i < number; ++i)
 				{
 					if (pose_clusters[i].getVote() < show_vote_thresh)continue;
@@ -514,12 +471,25 @@ main(int argc, char *argv[])
 					pcl::visualization::PointCloudColorHandlerCustom<PointType> rotated_model_color_handler(rotated_model, 255, 0, 0);
 					viewer.addPointCloud(rotated_model, rotated_model_color_handler, ss_cloud.str());
 					viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, ss_cloud.str());
+
+
+					if (enable_icp) {
+						pcl::PointCloud<PointType>::Ptr fine_rotated_model(new pcl::PointCloud<PointType>());
+						pcl::transformPointCloud(*model_keypoints, *fine_rotated_model, refined_pose_clusters[i].mean_transformation);
+						pcl::visualization::PointCloudColorHandlerCustom<PointType> fine_rotated_model_color_handler(fine_rotated_model, 0, 0, 255);
+						viewer.addPointCloud(fine_rotated_model, fine_rotated_model_color_handler, ss_cloud.str()+"icp");
+						viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, ss_cloud.str()+"icp");
+						cout << "ICP_rot: " << refined_pose_clusters[i].mean_rot.transpose() << endl;
+						cout << "ICP_trans: " << refined_pose_clusters[i].mean_trans.transpose() << endl;
+						std::cout << "ICP score: " << refined_pose_clusters[i].vote_count << std::endl;
+					}
 				}
 				viewer.spin();
 				cout << ">>>>>>>>>>>>>>Please input key+Enter to continue" << endl;
 				cout << ">> q: quit" << endl;
 				cout << ">> c: change vote thresh" << endl;
 				cout << ">> n: change max show number" << endl;
+				cout << ">> i: enable icp" << endl;
 				scanf("  %c", &key);
 				if (key == 'q')
 					break;
@@ -533,7 +503,13 @@ main(int argc, char *argv[])
 					cout << "PLS input new number:" << endl;
 					scanf("  %d", &max_show_number);
 				}
-					
+				if (key == 'i')
+				{
+					if (enable_icp)
+						enable_icp = false;
+					else
+						enable_icp = true;
+				}
 				if (show_vote_thresh <= 0)show_vote_thresh = 0.1;
 				if (show_vote_thresh > 1)show_vote_thresh = 1;
 				if (max_show_number <= 0)max_show_number = 1;

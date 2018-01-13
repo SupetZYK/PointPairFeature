@@ -5,6 +5,7 @@
 #ifdef vote_flag_use_map
 #include <unordered_map>
 #endif
+#include <pcl/registration/icp.h> 
 using namespace zyk;
 
 
@@ -393,6 +394,50 @@ bool zyk::PPF_Space::getPoseFromPPFCorresspondence(PointType& model_point, Norma
 	//	return false;
 	//}
 	return true;
+}
+
+
+void zyk::PPF_Space::ICP_Refine(pcl::PointCloud<PointType>::Ptr scene, const vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& coarse_pose_clusters, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& pose_clusters_out, int max_number, double scene_res, double max_dis)
+{
+	if (max_number <= 0)
+		max_number = 10;
+	max_number = std::min(max_number, int(coarse_pose_clusters.size()));
+	
+	if (max_dis < 0) {
+		//auto calculate the max_dis;
+		if (scene_res < 0) {
+			// scene_res is not provided, should calculate the scene resolution
+			scene_res = computeCloudResolution(scene);
+		}
+		max_dis = scene_res*1.414 + 0.05;
+	}
+	
+	for (size_t i = 0; i < max_number; ++i) {
+		pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
+		pcl::PointCloud<PointType>::Ptr icp_res(new pcl::PointCloud<PointType>());
+		pcl::transformPointCloud(*centered_point_cloud, *rotated_model, coarse_pose_clusters[i].mean_transformation);
+		pcl::IterativeClosestPoint<PointType, PointType> icp;
+		icp.setMaximumIterations(500);
+		icp.setInputTarget(scene);
+		icp.setTransformationEpsilon(1e-10);
+		icp.setEuclideanFitnessEpsilon(0.001);
+		icp.setMaxCorrespondenceDistance(max_dis);
+		icp.setInputSource(rotated_model);
+		icp.align(*icp_res);
+		//calculate icp scores
+		double score = 0;
+		double thresh = max_dis*max_dis;
+		for (int j = 0; j < icp.correspondences_->size(); ++j)//此处得到的distance为点对距离的平方，源码：d:\Program Files\PCL 1.8.0\include\pcl-1.8\pcl\registration\impl\correspondence_estimation.hpp
+		{
+			if (icp.correspondences_->at(j).distance <= thresh)
+			{
+				score = score + 1.0;
+			}
+		}
+		score /= centered_point_cloud->size();
+		pose_clusters_out.push_back(zyk::pose_cluster(Eigen::Affine3f(icp.getFinalTransformation())*coarse_pose_clusters[i].mean_transformation, score));
+	}
+	//std::sort(pose_clusters_out.begin(), pose_clusters_out.end(), zyk::pose_cluster_comp);
 }
 
 bool zyk::PPF_Space::computeAllPPF()

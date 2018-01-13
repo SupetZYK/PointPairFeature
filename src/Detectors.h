@@ -97,6 +97,9 @@ public:
 	/** get model point cloud
 	*/
 	void getModelPointCloud(vector<Vec3d>& modelPoints);
+	/** get model point normals
+	*/
+	void getModelPointNormals(vector<Vec3d>& modelNormals);
 protected:
 	detectOptions mDetectOptions;
 	trainOptions mTrainOptions;

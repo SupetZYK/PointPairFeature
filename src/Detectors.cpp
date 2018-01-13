@@ -85,9 +85,20 @@ void CDetectModel3D::getModelPointCloud(vector<Vec3d>& modelPoints)
 {
 	if (p_PPF != NULL) {
 		pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
-		p_PPF->getCenteredPointCloud(model);
+		p_PPF->getModelPointCloud(model);
 		for (size_t i = 0; i < model->size(); ++i) {
 			modelPoints.push_back(Vec3d{ model->at(i).x, model->at(i).y, model->at(i).z });
+		}
+	}
+}
+
+void CDetectModel3D::getModelPointNormals(vector<Vec3d>& modelNormals)
+{
+	if (p_PPF != NULL) {
+		pcl::PointCloud<NormalType>::Ptr normals(new pcl::PointCloud<NormalType>());
+		p_PPF->getPointNormalCloud(normals);
+		for (size_t i = 0; i < normals->size(); ++i) {
+			modelNormals.push_back(Vec3d{ normals->at(i).normal_x, normals->at(i).normal_y, normals->at(i).normal_z });
 		}
 	}
 }

@@ -13,11 +13,10 @@ std::string scene_file = "../../../datafile/plat_scene.ply";
 int main(int argc, char**argv) {
 
 	CDetectors3D detectors;
-	
 	//set detect parameters
 	CDetectModel3D::detectOptions opt;
-	opt.downSampleRatio = 0.08;
-	opt.maxNumber = 30;
+	opt.downSampleRatio = 0.05;
+	opt.maxNumber = 10;
 	opt.MaxOverlapDistRel = 0.5;
 	opt.minScore = 0.3;
 	opt.mlsOrder = 1;
