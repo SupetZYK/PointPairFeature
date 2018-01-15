@@ -1,4 +1,4 @@
-﻿#include <common.h>
+﻿#include <util_pcl.h>
 #include "PPFFeature.h"
 #include "pose_cluster.h"
 //pcl
@@ -25,7 +25,7 @@ bool two_ball_switch_ (false);
 //bool use_ply_filetype_ (false);
 //bool use_iss_(false);
 bool use_existing_normal_data_ (false);
-bool use_mls_(false);
+int mls_order (2);
 //bool use_ppfs_file_  (false);
 //float model_ss_ (0.01f);
 float scene_ds_(-1.0f);
@@ -62,7 +62,7 @@ void showHelp (char *filename)
   std::cout << "     --in:					Use existing normal files" << std::endl;
   std::cout << "     --tb:					Two ball switch" << std::endl;
   std::cout << "     --sppf:				Spread discretized ppf" << std::endl;
-  std::cout << "     --mls:					Use moving least squares" << std::endl;
+  std::cout << "     --mls val:				Moving least squares order, set to 0 to disable" << std::endl;
   std::cout << "     --scene_ds val:        Scene uniform sampling radius (default same as model)" << std::endl;
   std::cout << "     --angle_thresh val:    angle thresh when do ppf clustering" << std::endl;
   std::cout << "     --dis_thresh val:		first distance thresh(relative to radius)" << std::endl;
@@ -111,10 +111,10 @@ void parseCommandLine (int argc, char *argv[])
   {
 	  use_existing_normal_data_ = true;
   }
-  if (pcl::console::find_switch(argc, argv, "--mls"))
-  {
-	  use_mls_ = true;
-  }
+  //if (pcl::console::find_switch(argc, argv, "--mls"))
+  //{
+	 // use_mls_ = true;
+  //}
   if (pcl::console::find_switch(argc, argv, "--tb"))
   {
 	  two_ball_switch_ = true;
@@ -177,6 +177,7 @@ void parseCommandLine (int argc, char *argv[])
   pcl::console::parse_argument (argc, argv, "--se_d", second_distance_thresh);
   pcl::console::parse_argument (argc, argv, "--show_thresh", show_vote_thresh);
   pcl::console::parse_argument (argc, argv, "--icp_thresh", icp_dis_thresh);
+  pcl::console::parse_argument(argc, argv, "--mls", mls_order);
 }
 
 
@@ -199,11 +200,11 @@ main(int argc, char *argv[])
 
 
 	if (use_existing_normal_data_) {
-		if (!readPointCloud(scene_filename_, scene, scene_normals))
+		if (!zyk::readPointCloud(scene_filename_, scene, scene_normals))
 			return(-1);
 	}
 	else {
-		if (!readPointCloud(scene_filename_, scene))
+		if (!zyk::readPointCloud(scene_filename_, scene))
 			return(-1);
 	}
 	cout<<"Read finish"<<endl;
@@ -248,7 +249,7 @@ main(int argc, char *argv[])
 	std::cout << "Model height: " << model_height << std::endl;
 
 	//compute original scene resolution
-	double original_scene_res = computeCloudResolution(scene);
+	double original_scene_res = zyk::computeCloudResolution(scene);
 	std::cout << "Original scene resolution is: " << original_scene_res << std::endl;
 	double scene_ss_ = 1;
 	if (scene_ds_ < 0)
@@ -262,9 +263,9 @@ main(int argc, char *argv[])
 	//
 	pcl::IndicesPtr sampled_index_ptr;
 	if (use_existing_normal_data_)
-		sampled_index_ptr = uniformDownSamplePointAndNormal(scene, scene_normals, scene_ss_, scene_keypoints, scene_keyNormals);
+		sampled_index_ptr = zyk::uniformDownSamplePointAndNormal(scene, scene_normals, scene_ss_, scene_keypoints, scene_keyNormals);
 	else
-		sampled_index_ptr = uniformDownSamplePoint(scene, scene_ss_, scene_keypoints);
+		sampled_index_ptr = zyk::uniformDownSamplePoint(scene, scene_ss_, scene_keypoints);
 	std::cout << "Scene total points: " << scene->size() << "; Selected downsample: " << scene_keypoints->size() << std::endl;
 
 	//
@@ -273,7 +274,7 @@ main(int argc, char *argv[])
 
 	if (!use_existing_normal_data_)
 	{
-		if (!use_mls_)
+		if (mls_order==0)
 		{
 			pcl::NormalEstimationOMP<PointType, NormalType> norm_est;
 			norm_est.setIndices(sampled_index_ptr);
@@ -290,7 +291,7 @@ main(int argc, char *argv[])
 			mls.setInputCloud(scene);
 			mls.setIndices(sampled_index_ptr);
 			mls.setComputeNormals(true);
-			mls.setPolynomialFit(true);
+			mls.setPolynomialOrder(mls_order);
 			mls.setSearchMethod(tree);
 			mls.setSearchRadius(model_feature_space.model_res);
 			//mls.setSearchRadius(0.7*model_feature_space.model_res);
@@ -442,6 +443,7 @@ main(int argc, char *argv[])
 				pcl::visualization::PCLVisualizer viewer("Correspondence Grouping");
 				pcl::visualization::PointCloudColorHandlerCustom<PointType> scene_color_handler(scene, 0, 255, 0);
 				viewer.addPointCloud(scene, scene_color_handler, "scene_cloud");
+				viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "scene_cloud");
 				cout << ">>Show vote thresh is : " << show_vote_thresh << endl;
 
 				//
@@ -458,6 +460,7 @@ main(int argc, char *argv[])
 					if (pose_clusters[i].getVote() < show_vote_thresh)continue;
 					pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
 					pcl::transformPointCloud(*model_keypoints, *rotated_model, pose_clusters[i].mean_transformation);
+
 					std::stringstream ss_cloud;
 
 					cout << ">>>>>>clusters " << i << "<<<<<<<<" << endl;

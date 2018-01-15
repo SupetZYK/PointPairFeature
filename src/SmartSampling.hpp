@@ -1,7 +1,7 @@
 
 #ifndef PCL_FILTERS_SMART_SASMPLING_HPP_
 #define PCL_FILTERS_SMART_SASMPLING_HPP_
-#include "common.h"
+#include <precomp.h>
 #include <pcl/common/common.h>
 #include <pcl/filters/filter.h>
 #include <boost/unordered_map.hpp>

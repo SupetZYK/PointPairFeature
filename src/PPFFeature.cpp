@@ -280,19 +280,19 @@ void zyk::PPF_Space::computeSinglePPF(const PointType& first_pnt, const NormalTy
 	d[0] = second_pnt.x - first_pnt.x;
 	d[1] = second_pnt.y - first_pnt.y;
 	d[2] = second_pnt.z - first_pnt.z;
-	float d_norm = norm(d, 3);
+	float d_norm = zyk::norm(d, 3);
 
 	d[0] /= d_norm;
 	d[1] /= d_norm;
 	d[2] /= d_norm;
 
 	float dot_res;
-	dot_res = dot(first_normal.normal, d, 3);
+	dot_res = zyk::dot(first_normal.normal, d, 3);
 	if (dot_res > 1)dot_res = 1;
 	else if (dot_res < -1)dot_res = -1;
 	ppf.ppf.f1 = acosf(dot_res);
 
-	dot_res = dot(second_normal.normal, d, 3);
+	dot_res = zyk::dot(second_normal.normal, d, 3);
 	if (dot_res>1)dot_res = 1;
 	else if (dot_res < -1)dot_res = -1;
 	ppf.ppf.f2 = acosf(dot_res);
@@ -410,24 +410,24 @@ void zyk::PPF_Space::ICP_Refine(pcl::PointCloud<PointType>::Ptr scene, const vec
 			scene_res = computeCloudResolution(scene);
 		}
 		max_dis = scene_res*1.414 + 0.05;
+		std::cout << "ICP max distance computed: " << max_dis << std::endl;
 	}
-	
+	pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
+	pcl::PointCloud<PointType>::Ptr icp_res(new pcl::PointCloud<PointType>());
+	pcl::IterativeClosestPoint<PointType, PointType> icp;
+	icp.setMaximumIterations(100);
+	icp.setInputTarget(scene);
+	icp.setTransformationEpsilon(1e-10);
+	icp.setEuclideanFitnessEpsilon(0.001);
+	icp.setMaxCorrespondenceDistance(max_dis);
 	for (size_t i = 0; i < max_number; ++i) {
-		pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
-		pcl::PointCloud<PointType>::Ptr icp_res(new pcl::PointCloud<PointType>());
-		pcl::transformPointCloud(*centered_point_cloud, *rotated_model, coarse_pose_clusters[i].mean_transformation);
-		pcl::IterativeClosestPoint<PointType, PointType> icp;
-		icp.setMaximumIterations(500);
-		icp.setInputTarget(scene);
-		icp.setTransformationEpsilon(1e-10);
-		icp.setEuclideanFitnessEpsilon(0.001);
-		icp.setMaxCorrespondenceDistance(max_dis);
+		pcl::transformPointCloud(*input_point_cloud, *rotated_model, coarse_pose_clusters[i].mean_transformation);
 		icp.setInputSource(rotated_model);
 		icp.align(*icp_res);
 		//calculate icp scores
 		double score = 0;
 		double thresh = max_dis*max_dis;
-		for (int j = 0; j < icp.correspondences_->size(); ++j)//此处得到的distance为点对距离的平方，源码：d:\Program Files\PCL 1.8.0\include\pcl-1.8\pcl\registration\impl\correspondence_estimation.hpp
+		for (int j = 0; j < icp.correspondences_->size(); ++j)
 		{
 			if (icp.correspondences_->at(j).distance <= thresh)
 			{
@@ -631,7 +631,7 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene
 				NormalType sn = scene_normals->at((*p_current_neiboring_point_box)[k]);
 				if (fabs(mp.x - sp.x) + fabs(mp.y - sp.y) + fabs(mp.z - sp.z) < dis_thresh)
 				{
-					if (dot(mn.normal, sn.normal, 3) > cos_ang_thresh) {
+					if (zyk::dot(mn.normal, sn.normal, 3) > cos_ang_thresh) {
 						score = score + 1;
 						found = true;
 						break;
@@ -711,6 +711,7 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene
 
 void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, float second_dis_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& pose_clusters)
 {
+	std::cout << "match object: " << mName << std::endl;
 	int scene_steps = floor(1.0 / relativeReferencePointsNumber);
 	if (scene_steps < 1)scene_steps = 1;
 
@@ -816,7 +817,7 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 #else
 					const PointType& sp = scene->at(scene_pnt_index);
 					const NormalType& sn = scene_normals->at(scene_pnt_index);
-					float distance = dist(sp.data, rp.data, 3);
+					float distance = zyk::dist(sp.data, rp.data, 3);
 #endif
 					
 					if (neiboringBoxIndex != box_index)
@@ -1064,7 +1065,7 @@ void zyk::PPF_Space::recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointClo
 					NormalType sn = scene_normals.at((*p_current_neiboring_point_box)[k]);
 					if (fabs(mp.x - sp.x) + fabs(mp.y - sp.y) + fabs(mp.z - sp.z) < dis_thresh)
 					{
-						if (dot(mn.normal, sn.normal, 3) > cos_ang_thresh) {
+						if (zyk::dot(mn.normal, sn.normal, 3) > cos_ang_thresh) {
 							score = score + 1;
 							found = true;
 							break;

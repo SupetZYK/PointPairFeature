@@ -1,4 +1,4 @@
-#include "common.h"
+#include "util_pcl.h"
 #include "Voxel_grid.h"
 #include "PPFFeature.h"
 #include "pose_cluster.h"
@@ -145,11 +145,11 @@ main(int argc, char *argv[])
 	pcl::PointCloud<NormalType>::Ptr model_normals(new pcl::PointCloud<NormalType>());
 
 	if (use_existing_normal_data_) {
-		if (!readPointCloud(model_filename_, model, model_normals))
+		if (!zyk::readPointCloud(model_filename_, model, model_normals))
 			return(-1);
 	}
 	else {
-		if (!readPointCloud(model_filename_, model))
+		if (!zyk::readPointCloud(model_filename_, model))
 			return(-1);
 	}
 
@@ -174,7 +174,7 @@ main(int argc, char *argv[])
 
 	double max_coord[3];
 	double min_coord[3];
-	float resolution = static_cast<float> (computeCloudResolution(model, max_coord, min_coord));
+	float resolution = static_cast<float> (zyk::computeCloudResolution(model, max_coord, min_coord));
 
 	double model_length = max_coord[0] - min_coord[0];
 	double model_width = max_coord[1] - min_coord[1];
@@ -212,8 +212,8 @@ main(int argc, char *argv[])
 		else
 		{
 			pcl::PointCloud<PointType>::Ptr pnts_tmp(new pcl::PointCloud<PointType>());
-			MovingLeastSquares<PointType, PointType> mls;
-			search::KdTree<PointType>::Ptr tree;
+			pcl::MovingLeastSquares<PointType, PointType> mls;
+			pcl::search::KdTree<PointType>::Ptr tree;
 			// Set parameters
 			mls.setInputCloud(model);
 			mls.setComputeNormals(true);
@@ -239,6 +239,7 @@ main(int argc, char *argv[])
 
 	if (normal_reorient_switch_)
 	{
+		std::cout << "Reorint Normals" << std::endl;
 		for (int i = 0; i < model->size(); ++i)
 		{
 			Eigen::Vector3f pnt_temp = model->points[i].getVector3fMap();
@@ -323,11 +324,11 @@ main(int argc, char *argv[])
 	//smat sample
 	pcl::SmartSampling<PointType, NormalType> smart_samp;
 	if (smart_sample_border_)
-		SmartDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, ang_thresh, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
+		zyk::SmartDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, ang_thresh, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
 	else
-		uniformDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
+		zyk::uniformDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
 	if (plane_ds_>0)
-		uniformDownSamplePointAndNormal(pnts_zero, normals_zero, plane_ds_*d_max, model_zero_curvature_keypoints, model_zero_curvature_keyNormals);
+		zyk::uniformDownSamplePointAndNormal(pnts_zero, normals_zero, plane_ds_*d_max, model_zero_curvature_keypoints, model_zero_curvature_keyNormals);
 	std::cout << "Model total points: " << model->size() << std::endl;
 	std::cout << "No zero total points: " << pnts_no_zero->size() << "; Selected downsample: " << model_no_zero_curvatur_keypoints->size() << std::endl;
 	std::cout << "zero total points: " << pnts_zero->size() << "; Selected downsample: " << model_zero_curvature_keypoints->size() << std::endl;
@@ -402,8 +403,10 @@ main(int argc, char *argv[])
 	//}
 
 	//model ppf space
-	int pos = model_filename_.find_last_of('.');
-	std::string objName = model_filename_.substr(0, pos);
+	char tmp[100];
+	_splitpath(model_filename_.c_str(), NULL, NULL, tmp, NULL);
+	std::string objName(tmp);
+	std::cout << "Trained object Name: " << objName << std::endl;
 	zyk::PPF_Space model_feature_space;
 	cout << "trained using angle_div , distance_div: " << angle_div_ << ", " << distance_div_ << endl;
 	model_feature_space.init(objName, keypoints, keyNormals, angle_div_ , distance_div_,true);

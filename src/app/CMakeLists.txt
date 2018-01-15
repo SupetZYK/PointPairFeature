@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 
-aux_source_directory(. app_list)
+add_executable(ply2pcd ply2pcd.cpp)
+target_link_libraries(ply2pcd ${PCL_LIBRARIES})
 
+add_executable(txt2pcd txt2pcd.cpp)
+target_link_libraries(txt2pcd ${PCL_LIBRARIES})
 
-foreach(app_file_namme ${app_list})
-get_filename_component(app_name ${app_file_namme} NAME_WE)
-add_executable(${app_name}   ${app_file_namme})
-message("current app is: ${app_name}")
-message("current app file is: ${app_file_namme}")
-target_link_libraries(${app_name} zyk_ppf ${PCL_LIBRARIES})
-endforeach(app_file_namme ${app_list})
+add_executable(ppf_match ppf_match.cpp)
+target_link_libraries(ppf_match zyk_ppf ${PCL_LIBRARIES})
+
+add_executable(ppf_train ppf_train.cpp)
+target_link_libraries(ppf_train zyk_ppf ${PCL_LIBRARIES})

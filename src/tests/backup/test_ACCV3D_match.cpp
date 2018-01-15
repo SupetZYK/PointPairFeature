@@ -10,7 +10,66 @@
 #include <pcl/surface/mls.h>
 #include <pcl/common/transforms.h>
 
+IplImage * loadDepth(std::string a_name)
+{
+	std::ifstream l_file(a_name.c_str(), std::ofstream::in | std::ofstream::binary);
 
+	if (l_file.fail() == true)
+	{
+		printf("cv_load_depth: could not open file for writing!\n");
+		return NULL;
+	}
+	int l_row;
+	int l_col;
+
+	l_file.read((char*)&l_row, sizeof(l_row));
+	l_file.read((char*)&l_col, sizeof(l_col));
+
+	IplImage * lp_image = cvCreateImage(cvSize(l_col, l_row), IPL_DEPTH_16U, 1);
+
+	for (int l_r = 0; l_r < l_row; ++l_r)
+	{
+		for (int l_c = 0; l_c < l_col; ++l_c)
+		{
+			l_file.read((char*)&CV_IMAGE_ELEM(lp_image, unsigned short, l_r, l_c), sizeof(unsigned short));
+		}
+	}
+	l_file.close();
+
+	return lp_image;
+}
+
+void cv_mat_cloud_to_pcl_cloud(cv::Mat pc, pcl::PointCloud<PointType>::Ptr pt)
+{
+	for (int i = 0; i < pc.rows; i++)
+	{
+		for (int j = 0; j < pc.cols; ++j)
+		{
+			PointType _tem;
+			_tem.x = pc.at<cv::Vec3f>(i, j)[0];
+			_tem.y = pc.at<cv::Vec3f>(i, j)[1];
+			_tem.z = pc.at<cv::Vec3f>(i, j)[2];
+			pt->push_back(_tem);
+		}
+
+	}
+}
+
+void cv_depth_2_pcl_cloud(std::string depth_file_name, cv::Mat intrinsicK, pcl::PointCloud<PointType>::Ptr out)
+{
+	IplImage *depth_in = loadDepth(depth_file_name);
+	cv::Mat depth = cv::cvarrToMat(depth_in);
+	
+	if (depth.depth() != CV_32F)
+	{
+		depth.convertTo(depth, CV_32F);
+	}
+	cv::Mat pc;
+	cv::rgbd::depthTo3d(depth, intrinsicK, pc);
+
+	cv_mat_cloud_to_pcl_cloud(pc, out);
+
+}
 
 
 //std::string model_filename_;

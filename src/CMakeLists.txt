@@ -35,7 +35,7 @@ add_library(zyk_ppf SHARED ${zyk_ppf_src})
 aux_source_directory(./python/  zyk_ppf_python_src)
 add_library(zyk_ppf_python SHARED ${zyk_ppf_python_src})
 
-target_link_libraries(zyk_ppf ${PCL_LIBRARIES} ${OpenCV_LIBS} rgbd)
+target_link_libraries(zyk_ppf ${PCL_LIBRARIES})
 target_link_libraries(zyk_ppf_python zyk_ppf ${PCL_LIBRARIES})
 
 #apps and tools

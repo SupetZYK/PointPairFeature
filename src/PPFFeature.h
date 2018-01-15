@@ -1,7 +1,8 @@
 #pragma once
 #include <vector>
 #include <stdint.h>
-#include "common.h"
+#include <util.h>
+#include <util_pcl.h>
 #include "pose_cluster.h"
 #include "Voxel_grid.h"
 
@@ -46,7 +47,7 @@ namespace zyk
 		////////////////////
 		const string getName() const { return mName; };
 		const double getMaxD() const { return max_p[3]; };
-		const double getSampleRatio() const { return model_res / (norm(model_size, 3)); };
+		const double getSampleRatio() const { return model_res / (zyk::norm(model_size, 3)); };
 	public:
 		////////////////////
 		//////methods

@@ -1,7 +1,4 @@
-#include "common.h"
-#include "Voxel_grid.h"
-#include "PPFFeature.h"
-#include "pose_cluster.h"
+
 #include <pcl/io/pcd_io.h>
 std::string model_filename_;
 std::string save_filename_;

@@ -78,6 +78,11 @@ public:
 	*@ filepath, path of the model file(.ppfs format only)
 	*/
 	bool readSurfaceModel(string filePath);
+	/** create a surface model from a model point cloud
+	*@ filePath, path of the model point cloud, .ply format only
+	*@ savePath, path of the surface model to be created 
+	*/
+	bool createSurfaceModel(string filePath, string savePath="");
 	/** clear the surface model
 	*/
 	void clearSurModel();
@@ -88,6 +93,13 @@ public:
 	*@ opt, options to set
 	*/
 	void setDetectOptions(detectOptions& opt) { mDetectOptions = opt; };
+	/** get train options
+	*/
+	const trainOptions& getTrainOptions() const { return mTrainOptions; };
+	/** set train options
+	*@ opt, options to set
+	*/
+	void setTrainOptions(trainOptions& opt) { mTrainOptions = opt; };
 	/** get the name of the model
 	*/
 	const string& getModelName() const { return ObjectName; };
@@ -124,13 +136,17 @@ public:
 	*@ filePath, path of the scene point cloud file, (.ply format only)
 	*/
 	bool readScene(const string filePath);
+	/** read in the scene point cloud
+	*@ pointCloud, pointClouds
+	*/
+	bool readScene(const vector<Vec3d>& pointCloud);
 	/** detect the specified model, the detected results is stored the model class
 	*@ objectName, name of the model to be detected
 	*@ keyPointRatio, key point to be used. 1/5 is recommended, large value may not improve the accuracy but slow down the process greatly
 	*/
 	bool findPart(const string objectName, double keyPointRatio=0.2);
 	/** detect all models in the detectors
-	*@ keyPointRatio, key point to be used. 1/5 is recommended, large value may not improve the accuracy but slow down the process greatly
+	*@ keyPointRatio, key point to be used. 0.2 is recommended, large value may not improve the accuracy but slow down the process greatly
 	*/
 	bool findParts(double keyPointRatio = 0.2);
 	/** read in a pre-created surface model and return its pointer

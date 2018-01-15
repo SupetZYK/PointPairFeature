@@ -1,4 +1,4 @@
-#include "common.h"
+#include "util_pcl.h"
 
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/keypoints/uniform_sampling.h>
@@ -16,7 +16,7 @@ using namespace pcl;
 
 
 
-double computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud, double max_coord[3], double min_coord[3])
+double zyk::computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud, double max_coord[3], double min_coord[3])
 {
 	double res = 0.0;
 	int n_points = 0;
@@ -77,7 +77,7 @@ double computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud,
 //	pcl::IndicesPtr ptr (new pcl::IndicesPtr());
 //	return ptr;
 //}
-pcl::IndicesPtr uniformDownSamplePoint(pcl::PointCloud<PointType>::Ptr pointcloud, double relSamplingDistance, pcl::PointCloud<PointType>::Ptr outCloud)
+pcl::IndicesPtr zyk::uniformDownSamplePoint(pcl::PointCloud<PointType>::Ptr pointcloud, double relSamplingDistance, pcl::PointCloud<PointType>::Ptr outCloud)
 {
 	pcl::UniformSampling<PointType> uniform_sampling;
 	uniform_sampling.setInputCloud(pointcloud);
@@ -87,7 +87,7 @@ pcl::IndicesPtr uniformDownSamplePoint(pcl::PointCloud<PointType>::Ptr pointclou
 
 }
 
-pcl::IndicesPtr uniformDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double relSamplingDistance,
+pcl::IndicesPtr zyk::uniformDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double relSamplingDistance,
 	pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNormal)
 {
 	pcl::UniformSampling<PointType> uniform_sampling;
@@ -104,7 +104,7 @@ pcl::IndicesPtr uniformDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr 
 	return selectedIndex;
 }
 
-bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double ang_degree_thresh, double relSamplingDistance,
+bool zyk::SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double ang_degree_thresh, double relSamplingDistance,
 	pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNormal)
 {
 	pcl::SmartSampling<PointType,NormalType> sampling;
@@ -124,7 +124,7 @@ bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, p
 }
 
 
-bool readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNor)
+bool zyk::readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNor)
 {
 	std::string fileformat;
 	int pos = filename.find_last_of('.') + 1;
@@ -193,7 +193,7 @@ bool readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr outClo
 //}
 
 
-void transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCloud<NormalType>&normals_out, const Eigen::Affine3f& transform)
+void zyk::transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCloud<NormalType>&normals_out, const Eigen::Affine3f& transform)
 {
 	size_t npts=normals_in.size();
 	normals_out.resize(npts);
@@ -204,95 +204,4 @@ void transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCl
   	    normals_out[i].normal_y = static_cast<float> (transform (1, 0) * nt.coeffRef (0) + transform (1, 1) * nt.coeffRef (1) + transform (1, 2) * nt.coeffRef (2));
         normals_out[i].normal_z = static_cast<float> (transform (2, 0) * nt.coeffRef (0) + transform (2, 1) * nt.coeffRef (1) + transform (2, 2) * nt.coeffRef (2));
 	}
-}
-
-
-IplImage * loadDepth(std::string a_name)
-{
-	std::ifstream l_file(a_name.c_str(), std::ofstream::in | std::ofstream::binary);
-
-	if (l_file.fail() == true)
-	{
-		printf("cv_load_depth: could not open file for writing!\n");
-		return NULL;
-	}
-	int l_row;
-	int l_col;
-
-	l_file.read((char*)&l_row, sizeof(l_row));
-	l_file.read((char*)&l_col, sizeof(l_col));
-
-	IplImage * lp_image = cvCreateImage(cvSize(l_col, l_row), IPL_DEPTH_16U, 1);
-
-	for (int l_r = 0; l_r < l_row; ++l_r)
-	{
-		for (int l_c = 0; l_c < l_col; ++l_c)
-		{
-			l_file.read((char*)&CV_IMAGE_ELEM(lp_image, unsigned short, l_r, l_c), sizeof(unsigned short));
-		}
-	}
-	l_file.close();
-
-	return lp_image;
-}
-
-
-void cv_mat_cloud_to_pcl_cloud(cv::Mat pc, pcl::PointCloud<PointType>::Ptr pt)
-{
-	for (int i = 0; i < pc.rows; i++)
-	{
-		for (int j = 0; j < pc.cols; ++j)
-		{
-			PointType _tem;
-			_tem.x = pc.at<cv::Vec3f>(i, j)[0];
-			_tem.y = pc.at<cv::Vec3f>(i, j)[1];
-			_tem.z = pc.at<cv::Vec3f>(i, j)[2];
-			pt->push_back(_tem);
-		}
-
-	}
-}
-
-void cv_depth_2_pcl_cloud(std::string depth_file_name, cv::Mat intrinsicK, pcl::PointCloud<PointType>::Ptr out)
-{
-	IplImage *depth_in = loadDepth(depth_file_name);
-	cv::Mat depth = cv::cvarrToMat(depth_in);
-	
-	if (depth.depth() != CV_32F)
-	{
-		depth.convertTo(depth, CV_32F);
-	}
-	cv::Mat pc;
-	cv::rgbd::depthTo3d(depth, intrinsicK, pc);
-
-	cv_mat_cloud_to_pcl_cloud(pc, out);
-
-}
-
-
-double dot(const float* n1, const float* n2, const int dim)
-{
-	double res = 0;
-	for (int i = 0; i < dim; ++i)
-		res += n1[i] * n2[i];
-	return res;
-}
-
-double norm(const float* n, const int dim)
-{
-	double res = 0;
-	for (int i = 0; i < dim; ++i)
-		res += n[i] * n[i];
-	return sqrt(res);
-}
-
-double dist(const float* n1, const float* n2, const int dim)
-{
-	double res = 0;
-	for (int i = 0; i < dim; ++i)
-	{
-		double tmp = n1[i]- n2[i];
-		res += tmp*tmp;
-	}
-	return sqrt(res);
 }
