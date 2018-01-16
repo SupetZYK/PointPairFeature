@@ -301,7 +301,7 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
 	int max_num = modelDetector.mDetectOptions.maxNumber;
 	double minScore = modelDetector.mDetectOptions.minScore;
 	//do icp
-	int icp_number = std::min(max_num + 10, int(pose_clusters.size()));
+	int icp_number = std::min(max_num + 5, int(pose_clusters.size()));
 	pPPF->ICP_Refine(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution);
 	std::sort(refined_pose_clusters.begin(), refined_pose_clusters.end(), zyk::pose_cluster_comp);
 	matchResult& res = modelDetector.result;

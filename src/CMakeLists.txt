@@ -3,19 +3,19 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 project(ppf_recoginition)
 
 
-#set(PCL_DIR "D:/Program Files/PCL_STATIC/cmake/")
+set(PCL_DIR "D:/Program Files/PCL 1.8.0/cmake")
 
 
 #OpenCV library
-find_package(OpenCV 3.0 REQUIRED)
-include_directories(${OpenCV_INCLUDE_DIRS})
+#find_package(OpenCV 3.0 REQUIRED)
+#include_directories(${OpenCV_INCLUDE_DIRS})
 
 # posifix
 set(CMAKE_DEBUG_POSTFIX "_d")
 set(CMAKE_RELWITHDEBINFO_POSTFIX "_rd")
 
 #OpenCV contrib modules, these are built individually
-add_subdirectory(D:/Documents/GitHub/opencv_contrib/modules/rgbd/   rgbd)
+#add_subdirectory(D:/Documents/GitHub/opencv_contrib/modules/rgbd/   rgbd)
 
 #PCL library directories
 find_package(PCL 1.8 REQUIRED)

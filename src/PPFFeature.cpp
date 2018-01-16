@@ -847,6 +847,9 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 						vote_flag[ppf_box_index] |= 1 << scene_rotation_discretized;
 					//now calculate alpha of current_ppf
 					double current_alpha = computeAlpha(rp, rn, sp);
+					//18-1-16, bug on pcl 1.8.0 normal compute
+					if (!pcl_isfinite(current_alpha))
+						continue;
 					neighboring_ppf_box_index_vec.clear();
 					neighboring_ppf_box_index_vec.push_back(ppf_box_index);
 					if(spread_ppf_switch)
