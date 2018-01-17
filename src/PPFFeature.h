@@ -97,6 +97,7 @@ namespace zyk
 
 		//////// ICP test version
 		void ICP_Refine(pcl::PointCloud<PointType>::Ptr scene, const vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &coarse_pose_clusters, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters_out, int max_number, double scene_res=-1.0, double max_dis=-1.0);
+		void ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &coarse_pose_clusters, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters_out, int max_number, double scene_res = -1.0, double max_dis = -1.0);
 
 	protected:
 		///////////////IO

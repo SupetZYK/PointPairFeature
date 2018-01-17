@@ -81,8 +81,9 @@ public:
 	/** create a surface model from a model point cloud
 	*@ filePath, path of the model point cloud, .ply format only
 	*@ savePath, path of the surface model to be created 
+	*@ objName, name of the surface model to be created
 	*/
-	bool createSurfaceModel(string filePath, string savePath="");
+	bool createSurfaceModel(string filePath, string savePath="", string objName="");
 	/** clear the surface model
 	*/
 	void clearSurModel();
@@ -133,7 +134,7 @@ class ZYK_EXPORTS CDetectors3D
 public:
 	~CDetectors3D() { clear(); };
 	/** read in the scene point cloud
-	*@ filePath, path of the scene point cloud file, (.ply format only)
+	*@ filePath, path of the scene point cloud file, (.ply .txt)
 	*/
 	bool readScene(const string filePath);
 	/** read in the scene point cloud
@@ -144,7 +145,7 @@ public:
 	*@ objectName, name of the model to be detected
 	*@ keyPointRatio, key point to be used. 1/5 is recommended, large value may not improve the accuracy but slow down the process greatly
 	*/
-	bool findPart(const string objectName, double keyPointRatio=0.2);
+	bool findPart(const string objectName, double keyPointRatio=0.2, double test_param = -1.0);
 	/** detect all models in the detectors
 	*@ keyPointRatio, key point to be used. 0.2 is recommended, large value may not improve the accuracy but slow down the process greatly
 	*/
@@ -159,6 +160,11 @@ public:
 	/** clear all surface models
 	*/
 	void clear();
+	/** get objects map
+	*/
+	const std::map <std::string, CDetectModel3D*>& getDetectorModels() const {
+		return detectObjects;
+	};
 protected:
 	std::map <std::string, CDetectModel3D*> detectObjects;
 };

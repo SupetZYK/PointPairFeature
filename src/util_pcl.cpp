@@ -157,6 +157,86 @@ bool zyk::readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr o
 			}
 		}
 	}
+	else if (fileformat == "txt")
+	{
+		//only x y z supported
+		filebuf *pbuf;
+		ifstream fileread;
+		long size;
+		char * buffer;
+		// 要读入整个文件，必须采用二进制打开   
+		fileread.open(filename, ios::binary);
+		// 获取filestr对应buffer对象的指针（获得这个流对象的指针）
+		pbuf = fileread.rdbuf();
+
+		// 调用buffer对象方法获取文件大小  （当复位位置指针指向文件缓冲区的末尾时候pubseekoff返回的值就是整个文件流大小）
+		size = pbuf->pubseekoff(0, ios::end, ios::in);
+		pbuf->pubseekpos(0, ios::in);   //再让pbuf指向文件流开始位置
+
+		// 分配内存空间  
+		buffer = new char[size];
+
+		// 获取文件内容  
+		pbuf->sgetn(buffer, size);
+
+		fileread.close();
+
+
+		// 输出到标准输出  
+
+		//最佳方法按字符遍历整个buffer
+		string temp = "";
+		PointType Pnts;
+
+		float x = 0;
+		float y = 0;
+		float z = 0;
+		bool isy = false;
+		while (*buffer != '\0')
+		{
+			if (*buffer != '\n' && *buffer != '\r')
+			{
+				if (*buffer != ' ')
+				{
+					temp += *buffer;
+				}
+				else
+				{
+					if (!isy)  //如果是x的值
+					{
+						if (!temp.empty())
+						{
+							isy = !isy;
+							sscanf(temp.data(), "%f", &x);
+							Pnts.x = x;
+							temp = "";
+						}
+					}
+					else                  //如果是y的值
+					{
+						if (!temp.empty())
+						{
+							isy = !isy;
+							sscanf(temp.data(), "%f", &y);
+							Pnts.y = y;
+							temp = "";
+						}
+					}
+				}
+			}
+			else   //这里是z
+			{
+				if (!temp.empty())
+				{
+					sscanf(temp.data(), "%f", &z);
+					Pnts.z = z;
+					temp = "";
+					outCloud->push_back(Pnts);
+				}
+			}
+			buffer++;
+		}
+	}
 	else if (fileformat == "pcd")
 	{
 		/*if (pcl::io::loadPCDFile(filename, *outCloud) < 0)

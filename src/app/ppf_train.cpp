@@ -143,7 +143,8 @@ main(int argc, char *argv[])
 	showHelp(argv[0]);
 	pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
 	pcl::PointCloud<NormalType>::Ptr model_normals(new pcl::PointCloud<NormalType>());
-
+	pcl::PointCloud<PointType>::Ptr keypoints(new pcl::PointCloud<PointType>());
+	pcl::PointCloud<NormalType>::Ptr keyNormals(new pcl::PointCloud<NormalType>());
 	if (use_existing_normal_data_) {
 		if (!zyk::readPointCloud(model_filename_, model, model_normals))
 			return(-1);
@@ -263,122 +264,110 @@ main(int argc, char *argv[])
 	//
 	// Compute curvature
 	//
+	if (curvature_radius_ > 0) {
+		pcl::PrincipalCurvaturesEstimation<PointType, NormalType> curv_est;
+		pcl::PointCloud<pcl::PrincipalCurvatures>::Ptr curv(new pcl::PointCloud<pcl::PrincipalCurvatures>());
+		curv_est.setInputCloud(model);
+		curv_est.setInputNormals(model_normals);
+		curv_est.setRadiusSearch(curvature_radius_ * resolution);
+		curv_est.compute(*curv);
 
-	pcl::PrincipalCurvaturesEstimation<PointType, NormalType> curv_est;
-	pcl::PointCloud<pcl::PrincipalCurvatures>::Ptr curv(new pcl::PointCloud<pcl::PrincipalCurvatures>());
-	curv_est.setInputCloud(model);
-	curv_est.setInputNormals(model_normals);
-	curv_est.setRadiusSearch(curvature_radius_ * resolution);
-	curv_est.compute(*curv);
 
-
-	//
-	// show those curvature 0 and none_zero separately
-	//
-	pcl::PointCloud<PointType>::Ptr pnts_zero(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr normals_zero(new pcl::PointCloud<NormalType>());
-	pcl::PointCloud<PointType>::Ptr pnts_no_zero(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr normals_no_zero(new pcl::PointCloud<NormalType>());
-	for (int i = 0; i < model->size(); ++i)
-	{
-		pcl::PrincipalCurvatures c = curv->at(i);
-		if (abs(c.pc1)<0.001&&abs(c.pc2)<0.001)
+		//
+		// show those curvature 0 and none_zero separately
+		//
+		pcl::PointCloud<PointType>::Ptr pnts_zero(new pcl::PointCloud<PointType>());
+		pcl::PointCloud<NormalType>::Ptr normals_zero(new pcl::PointCloud<NormalType>());
+		pcl::PointCloud<PointType>::Ptr pnts_no_zero(new pcl::PointCloud<PointType>());
+		pcl::PointCloud<NormalType>::Ptr normals_no_zero(new pcl::PointCloud<NormalType>());
+		for (int i = 0; i < model->size(); ++i)
 		{
-			pnts_zero->push_back(model->at(i));
-			normals_zero->push_back(model_normals->at(i));
+			pcl::PrincipalCurvatures c = curv->at(i);
+			if (abs(c.pc1) < 0.001&&abs(c.pc2) < 0.001)
+			{
+				pnts_zero->push_back(model->at(i));
+				normals_zero->push_back(model_normals->at(i));
+			}
+			else
+			{
+				pnts_no_zero->push_back(model->at(i));
+				normals_no_zero->push_back(model_normals->at(i));
+			}
 		}
+
+		//
+		//visualize zero
+		//
+
+		pcl::visualization::PCLVisualizer zeroVisual("zero detect");
+		zeroVisual.addCoordinateSystem(20);
+		zeroVisual.addPointCloud(pnts_zero, pcl::visualization::PointCloudColorHandlerCustom<PointType>(pnts_zero, 0.0, 0.0, 255.0), "zero_pnts");
+		zeroVisual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "zero_pnts");
+		zeroVisual.spin();
+
+		//
+		//visualize no-zero
+		//
+
+		pcl::visualization::PCLVisualizer nozeroVisual("no-zero detect");
+		nozeroVisual.addCoordinateSystem(20);
+		nozeroVisual.addPointCloud(pnts_no_zero, pcl::visualization::PointCloudColorHandlerCustom<PointType>(pnts_no_zero, 0.0, 0.0, 255.0), "pnts_no_zero");
+		nozeroVisual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "pnts_no_zero");
+		nozeroVisual.spin();
+
+		//
+		//  Downsample Clouds to Extract keypoints
+		//
+		pcl::PointCloud<PointType>::Ptr model_zero_curvature_keypoints(new pcl::PointCloud<PointType>());
+		pcl::PointCloud<NormalType>::Ptr model_zero_curvature_keyNormals(new pcl::PointCloud<NormalType>());
+		pcl::PointCloud<PointType>::Ptr model_no_zero_curvatur_keypoints(new pcl::PointCloud<PointType>());
+		pcl::PointCloud<NormalType>::Ptr model_no_zero_curvature_keyNormals(new pcl::PointCloud<NormalType>());
+		//smat sample
+		pcl::SmartSampling<PointType, NormalType> smart_samp;
+		if (smart_sample_border_)
+			zyk::SmartDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, ang_thresh, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
 		else
+			zyk::uniformDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
+		if (plane_ds_ > 0)
+			zyk::uniformDownSamplePointAndNormal(pnts_zero, normals_zero, plane_ds_*d_max, model_zero_curvature_keypoints, model_zero_curvature_keyNormals);
+		std::cout << "Model total points: " << model->size() << std::endl;
+		std::cout << "No zero total points: " << pnts_no_zero->size() << "; Selected downsample: " << model_no_zero_curvatur_keypoints->size() << std::endl;
+		std::cout << "zero total points: " << pnts_zero->size() << "; Selected downsample: " << model_zero_curvature_keypoints->size() << std::endl;
+
+
+		if (save_sampled_cloud_)
 		{
-			pnts_no_zero->push_back(model->at(i));
-			normals_no_zero->push_back(model_normals->at(i));
+			pcl::io::savePLYFile(model_filename_ + "_changed", *model);
+		}
+
+		//
+		// combine key pnts and key normals
+		//
+		keypoints = model_no_zero_curvatur_keypoints;
+		keyNormals = model_no_zero_curvature_keyNormals;
+		if (plane_ds_ > 0) {
+			*keypoints += *model_zero_curvature_keypoints;
+			*keyNormals += *model_zero_curvature_keyNormals;
 		}
 	}
-
-	//
-	//visualize zero
-	//
-
-	pcl::visualization::PCLVisualizer zeroVisual("zero detect");
-	zeroVisual.addCoordinateSystem(20);
-	zeroVisual.addPointCloud(pnts_zero, pcl::visualization::PointCloudColorHandlerCustom<PointType>(pnts_zero, 0.0, 0.0, 255.0), "zero_pnts");
-	zeroVisual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "zero_pnts");
-	zeroVisual.spin();
-
-	//
-	//visualize no-zero
-	//
-
-	pcl::visualization::PCLVisualizer nozeroVisual("no-zero detect");
-	nozeroVisual.addCoordinateSystem(20);
-	nozeroVisual.addPointCloud(pnts_no_zero, pcl::visualization::PointCloudColorHandlerCustom<PointType>(pnts_no_zero, 0.0, 0.0, 255.0), "pnts_no_zero");
-	nozeroVisual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 5, "pnts_no_zero");
-	nozeroVisual.spin();
-
-	//
-	//  Downsample Clouds to Extract keypoints
-	//
-	pcl::PointCloud<PointType>::Ptr model_zero_curvature_keypoints(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr model_zero_curvature_keyNormals(new pcl::PointCloud<NormalType>());
-	pcl::PointCloud<PointType>::Ptr model_no_zero_curvatur_keypoints(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr model_no_zero_curvature_keyNormals(new pcl::PointCloud<NormalType>());
-	//smat sample
-	pcl::SmartSampling<PointType, NormalType> smart_samp;
-	if (smart_sample_border_)
-		zyk::SmartDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, ang_thresh, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
-	else
-		zyk::uniformDownSamplePointAndNormal(pnts_no_zero, normals_no_zero, model_ss_, model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals);
-	if (plane_ds_>0)
-		zyk::uniformDownSamplePointAndNormal(pnts_zero, normals_zero, plane_ds_*d_max, model_zero_curvature_keypoints, model_zero_curvature_keyNormals);
-	std::cout << "Model total points: " << model->size() << std::endl;
-	std::cout << "No zero total points: " << pnts_no_zero->size() << "; Selected downsample: " << model_no_zero_curvatur_keypoints->size() << std::endl;
-	std::cout << "zero total points: " << pnts_zero->size() << "; Selected downsample: " << model_zero_curvature_keypoints->size() << std::endl;
-
-
-
-	////
-	//// change the center of the model
-	////
-
-	//pcl::PointCloud<PointType>::Ptr model_keypoints_changed(new pcl::PointCloud<PointType>());
-	//model_keypoints_changed->reserve(model_keypoints->size());
-	//for(size_t i=0;i<model_keypoints->size();++i)
-	//{
-		//PointType tmp;
-		//tmp.x=model_keypoints->at(i).x-model_approximate_center(0);
-		//tmp.y=model_keypoints->at(i).y-model_approximate_center(1);
-		//tmp.z=model_keypoints->at(i).z-model_approximate_center(2);
-		//model_keypoints_changed->push_back(tmp);
-	//}
-
-	if (save_sampled_cloud_)
-	{
-		pcl::io::savePLYFile(model_filename_ + "_changed", *model);
+	else {
+		zyk::uniformDownSamplePointAndNormal(model, model_normals, model_ss_, keypoints, keyNormals);
+		std::cout << "Model total points: " << model->size() << std::endl;
+		std::cout <<" Selected downsample: " << keypoints->size() << std::endl;	
 	}
+
 	//
 	//visualize keypoints
 	//
 
-	pcl::visualization::PCLVisualizer key_visual("keyPoint detect");
+	pcl::visualization::PCLVisualizer key_visual("Key point Viewr");
 	key_visual.addCoordinateSystem(20);
-	key_visual.addPointCloudNormals<PointType, NormalType>(model_no_zero_curvatur_keypoints, model_no_zero_curvature_keyNormals, 1, 10, "model_no_zero_normals");
-	key_visual.addPointCloud(model_no_zero_curvatur_keypoints, pcl::visualization::PointCloudColorHandlerCustom<PointType>(model_no_zero_curvatur_keypoints, 0.0, 0.0, 255.0), "model_no_zero_keypoints");
-	key_visual.addPointCloudNormals<PointType, NormalType>(model_zero_curvature_keypoints, model_zero_curvature_keyNormals, 1, 10, "model_zero_normals");
-	key_visual.addPointCloud(model_zero_curvature_keypoints, pcl::visualization::PointCloudColorHandlerCustom<PointType>(model_zero_curvature_keypoints, 0.0, 255.0, 0.0), "model_zero_keypoints");
-	key_visual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4, "model_no_zero_keypoints");
-	key_visual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4, "model_zero_keypoints");
+	key_visual.addPointCloud(keypoints, pcl::visualization::PointCloudColorHandlerCustom<PointType>(keypoints, 0.0, 0.0, 255.0), "keypoints");
+	key_visual.addPointCloudNormals<PointType, NormalType>(keypoints, keyNormals, 1, 10, "keynormals");
+	key_visual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4, "keypoints");
 	key_visual.spin();
 
-	//
-	// combine key pnts and key normals
-	//
-	pcl::PointCloud<PointType>::Ptr keypoints(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr keyNormals(new pcl::PointCloud<NormalType>());
-	keypoints = model_no_zero_curvatur_keypoints;
-	keyNormals = model_no_zero_curvature_keyNormals;
-	if (plane_ds_ > 0){
-		*keypoints += *model_zero_curvature_keypoints;
-		*keyNormals += *model_zero_curvature_keyNormals;
-	}
+
 	//
 	//  Compute Model Descriptors  PPF Space for model 
 	//

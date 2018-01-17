@@ -73,7 +73,7 @@ bool CDetectModel3D::readSurfaceModel(string filePath)
 //	return true;
 //}
 
-bool CDetectModel3D::createSurfaceModel(string filePath, string savePath)
+bool CDetectModel3D::createSurfaceModel(string filePath, string savePath, string objName)
 {
 	pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
 	pcl::PointCloud<NormalType>::Ptr model_normals(new pcl::PointCloud<NormalType>());
@@ -146,10 +146,12 @@ bool CDetectModel3D::createSurfaceModel(string filePath, string savePath)
 	model_size.push_back(model_length);
 	model_size.push_back(model_height);
 	std::sort(model_size.begin(), model_size.end());
-
-	char tmp[100];
-	_splitpath(filePath.c_str(), NULL, NULL, tmp, NULL);
-	std::string objName(tmp);
+	if (objName.empty()) {
+		char tmp[100];
+		_splitpath(filePath.c_str(), NULL, NULL, tmp, NULL);
+		objName = std::string(tmp);
+	}
+	this->ObjectName = objName;
 	std::cout << "Trained object Name: " << objName << std::endl;
 
 	if (p_PPF != NULL) {
@@ -238,7 +240,7 @@ bool CDetectors3D::readScene(const vector<Vec3d>& pointCloud)
 	return true;
 }
 
-bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
+bool CDetectors3D::findPart(const string objectName, double keyPointRatio, double test_param)
 {
 	std::map<std::string, CDetectModel3D*>::iterator itr_modelDetector = detectObjects.find(objectName);
 	if (itr_modelDetector==detectObjects.end())
@@ -286,7 +288,7 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
 		keyPointRatio, 
 		3, //max vote thresh
 		0.95, //max vote percentage
-		0.2, //angle thresh
+		0.15, //angle thresh
 		0.1, //first distance thresh
 		0.1, //recompute score distance thresh
 		0.3, //recompute score angle thresh
@@ -301,8 +303,17 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
 	int max_num = modelDetector.mDetectOptions.maxNumber;
 	double minScore = modelDetector.mDetectOptions.minScore;
 	//do icp
-	int icp_number = std::min(max_num + 5, int(pose_clusters.size()));
-	pPPF->ICP_Refine(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution);
+	int icp_number = std::min(max_num, int(pose_clusters.size()));
+
+	if (test_param > 0) {
+		//vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> tmp;
+		//pPPF->ICP_Refine(scene, pose_clusters, tmp, icp_number, scene_resolution, test_param);
+		//pPPF->ICP_Refine(scene, tmp, refined_pose_clusters, icp_number, scene_resolution);
+		pPPF->ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution, test_param);
+	}
+	else {
+		pPPF->ICP_Refine(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution);
+	}
 	std::sort(refined_pose_clusters.begin(), refined_pose_clusters.end(), zyk::pose_cluster_comp);
 	matchResult& res = modelDetector.result;
 	res.clear();

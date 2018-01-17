@@ -25,6 +25,8 @@ bool two_ball_switch_ (false);
 //bool use_ply_filetype_ (false);
 //bool use_iss_(false);
 bool use_existing_normal_data_ (false);
+
+int icp_type  (-1);
 int mls_order (2);
 //bool use_ppfs_file_  (false);
 //float model_ss_ (0.01f);
@@ -52,8 +54,9 @@ void showHelp (char *filename)
   std::cout << "*             Correspondence Grouping Tutorial - Usage Guide              *" << std::endl;
   std::cout << "*                                                                         *" << std::endl;
   std::cout << "***************************************************************************" << std::endl << std::endl;
-  std::cout << "Usage: " << filename << " ppfs_filename.ppfs scene_filename.ply [Options]" << std::endl << std::endl;
   std::cout << "Options:" << std::endl;
+  std::cout << "     --mod [string]:        Input the model file name." << std::endl;
+  std::cout << "     --tar [string]:        Input the target cloud file name." << std::endl;
   std::cout << "     -h:                    Show this help." << std::endl;
   std::cout << "     -k:                    Show used keypoints." << std::endl;
   std::cout << "     -c:                    Show used correspondences." << std::endl;
@@ -74,7 +77,7 @@ void showHelp (char *filename)
   std::cout << "     --re_a val:			recompute score angle thresh, Set to '-1' to disable using angle thresh" << std::endl;
   std::cout << "     --se_d val:			second distance thresh, for overlapping elimination(default 0.5)" << std::endl;
   std::cout << "     --show_thresh val:     the clusters whose vote is greater than this will be displayed" << std::endl;
-  std::cout << "     --icp_thresh val:		max clusters per pose can be in" << std::endl;
+  std::cout << "     --icp val:				icp type(default -1 disabled)" << std::endl;
 }
 
 void parseCommandLine (int argc, char *argv[])
@@ -123,36 +126,19 @@ void parseCommandLine (int argc, char *argv[])
   {
 	  spread_ppf_switch_ = true;
   }
-  //if (pcl::console::find_switch (argc, argv, "--ply"))
-  //{
-    //use_ply_filetype_ = true;
-  //}
-	//if (pcl::console::find_switch(argc, argv, "--ppfs"))
-	//{
-		//use_ppfs_file_ = true;
-		std::vector<int> filenames;
-		filenames = pcl::console::parse_file_extension_argument(argc, argv, ".ppfs");
-		if (filenames.size() < 1)
-		{
-			std::cout << "template filenames missing.\n";
-			showHelp(argv[0]);
-			exit(-1);
-		}
-		model_ppfs_filename_ = argv[filenames[0]];
-		cout<<"Input ppfs file: "<<model_ppfs_filename_<<endl;
-	//}
-  //if (pcl::console::find_switch(argc, argv, "--iss"))
-  //{
-	  //use_iss_ = true;
-	  //pcl::console::parse_argument(argc, argv, "--iss_sr", iss_sr_);
-	  //pcl::console::parse_argument(argc, argv, "--iss_nr", iss_nr_);
-  //}
-
+#if 0 //older prompt style
+  std::vector<int> filenames;
+  filenames = pcl::console::parse_file_extension_argument(argc, argv, ".ppfs");
+  if (filenames.size() < 1)
+  {
+	  std::cout << "template filenames missing.\n";
+	  showHelp(argv[0]);
+	  exit(-1);
+  }
+  model_ppfs_filename_ = argv[filenames[0]];
+  cout << "Input ppfs file: " << model_ppfs_filename_ << endl;
   //Model & scene filenames
-	filenames.clear()	;
-  //if(use_ply_filetype_==false)
-	  //filenames = pcl::console::parse_file_extension_argument (argc, argv, ".pcd");
-  //else
+	filenames.clear();
 	 filenames = pcl::console::parse_file_extension_argument (argc, argv, ".ply");
 	if (filenames.size () < 1)
 	{
@@ -160,9 +146,17 @@ void parseCommandLine (int argc, char *argv[])
 	 showHelp (argv[0]);
 	 exit (-1);
 	}
-	//model_filename_ = argv[filenames[0]];
 	scene_filename_ = argv[filenames[0]];
-	cout<<"Input scene file: "<<scene_filename_<<endl;
+	cout << "Input scene file: " << scene_filename_ << endl;
+#else // new stype prompt style
+  pcl::console::parse_argument(argc, argv, "--mod", model_ppfs_filename_);
+  pcl::console::parse_argument(argc, argv, "--tar", scene_filename_);
+  if (model_ppfs_filename_.empty() || scene_filename_.empty()) {
+	  std::cout << "Two few files input!" << std::endl;
+	  system("pause");
+	  exit(-1);
+  }
+#endif
   //General parameters
   //pcl::console::parse_argument (argc, argv, "--model_ss", model_ss_);
   pcl::console::parse_argument (argc, argv, "--scene_ds", scene_ds_);
@@ -178,6 +172,7 @@ void parseCommandLine (int argc, char *argv[])
   pcl::console::parse_argument (argc, argv, "--show_thresh", show_vote_thresh);
   pcl::console::parse_argument (argc, argv, "--icp_thresh", icp_dis_thresh);
   pcl::console::parse_argument(argc, argv, "--mls", mls_order);
+  pcl::console::parse_argument(argc, argv, "--icp", icp_type);
 }
 
 
@@ -356,7 +351,6 @@ main(int argc, char *argv[])
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
 	int number = pose_clusters.size();
-	bool enable_icp = false;
 	////if (number > 12) number = 12;
 	if(show_cluster_result_)
 	{
@@ -443,17 +437,19 @@ main(int argc, char *argv[])
 				pcl::visualization::PCLVisualizer viewer("Correspondence Grouping");
 				pcl::visualization::PointCloudColorHandlerCustom<PointType> scene_color_handler(scene, 0, 255, 0);
 				viewer.addPointCloud(scene, scene_color_handler, "scene_cloud");
-				viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "scene_cloud");
+				viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "scene_cloud");
 				cout << ">>Show vote thresh is : " << show_vote_thresh << endl;
 
 				//
 				//check whether icp is needed
 				//
-				if (enable_icp) {
+				if (icp_type==1) {
 					refined_pose_clusters.clear();
-					std::cout << "Start ICP..." << std::endl;
 					model_feature_space.ICP_Refine(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res);
-					std::cout << "ICP finish!" << std::endl;
+				}
+				else if (icp_type == 2) {
+					refined_pose_clusters.clear();
+					model_feature_space.ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res, 6);
 				}
 				for (size_t i = 0; i < number; ++i)
 				{
@@ -476,7 +472,7 @@ main(int argc, char *argv[])
 					viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, ss_cloud.str());
 
 
-					if (enable_icp) {
+					if (icp_type>0) {
 						pcl::PointCloud<PointType>::Ptr fine_rotated_model(new pcl::PointCloud<PointType>());
 						pcl::transformPointCloud(*model_keypoints, *fine_rotated_model, refined_pose_clusters[i].mean_transformation);
 						pcl::visualization::PointCloudColorHandlerCustom<PointType> fine_rotated_model_color_handler(fine_rotated_model, 0, 0, 255);
@@ -508,11 +504,10 @@ main(int argc, char *argv[])
 				}
 				if (key == 'i')
 				{
-					if (enable_icp)
-						enable_icp = false;
-					else
-						enable_icp = true;
+					cout << "PLS input new icp type(1,2):" << endl;
+					scanf("  %d", &icp_type);
 				}
+				std::wcout << "icp type changed to " << icp_type << std::endl;
 				if (show_vote_thresh <= 0)show_vote_thresh = 0.1;
 				if (show_vote_thresh > 1)show_vote_thresh = 1;
 				if (max_show_number <= 0)max_show_number = 1;
