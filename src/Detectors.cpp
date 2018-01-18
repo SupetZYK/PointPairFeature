@@ -7,9 +7,7 @@
 
 
 CDetectModel3D::CDetectModel3D()
-	:mDetectOptions(detectOptions{ 0.05,0.3,1,10,1 })
-	, mTrainOptions(trainOptions{ 0.05,1 })
-	, ObjectName("")
+	: ObjectName("")
 	//, ShowColor("red")
 	, p_PPF(NULL)
 {
@@ -240,8 +238,9 @@ bool CDetectors3D::readScene(const vector<Vec3d>& pointCloud)
 	return true;
 }
 
-bool CDetectors3D::findPart(const string objectName, double keyPointRatio, double test_param)
+bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
 {
+	int startTime = clock();
 	std::map<std::string, CDetectModel3D*>::iterator itr_modelDetector = detectObjects.find(objectName);
 	if (itr_modelDetector==detectObjects.end())
 		return false;
@@ -299,19 +298,19 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio, doubl
 	if (pose_clusters.empty()) {
 		return false;
 	}
+	int icp_start_time = clock();
 	//matchResult[objectIndex].resize(detectObjects[i].mDetectOptions.)
 	int max_num = modelDetector.mDetectOptions.maxNumber;
 	double minScore = modelDetector.mDetectOptions.minScore;
 	//do icp
 	int icp_number = std::min(max_num, int(pose_clusters.size()));
 
-	if (test_param > 0) {
-		//vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> tmp;
-		//pPPF->ICP_Refine(scene, pose_clusters, tmp, icp_number, scene_resolution, test_param);
-		//pPPF->ICP_Refine(scene, tmp, refined_pose_clusters, icp_number, scene_resolution);
-		pPPF->ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution, test_param);
+	if (modelDetector.mDetectOptions.param_1 > 0) {
+		std::cout << "ICP VERSION 2..." << std::endl;
+		pPPF->ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution, modelDetector.mDetectOptions.param_1);
 	}
 	else {
+		std::cout << "ICP VERSION 1..." << std::endl;
 		pPPF->ICP_Refine(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution);
 	}
 	std::sort(refined_pose_clusters.begin(), refined_pose_clusters.end(), zyk::pose_cluster_comp);
@@ -322,6 +321,9 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio, doubl
 		res.rotatios.push_back(Vec3d{ refined_pose_clusters[i].mean_rot[0], refined_pose_clusters[i].mean_rot[1], refined_pose_clusters[i].mean_rot[2] });
 		res.translations.push_back(Vec3d{ refined_pose_clusters[i].mean_trans[0], refined_pose_clusters[i].mean_trans[1], refined_pose_clusters [i].mean_trans[2] });
 	}
+	int end_time = clock();
+	res.matchTime = (end_time - startTime) / 1000.0;
+	res.icpTime = (end_time - icp_start_time) / 1000.0;
 	res.matchComplete = true;
 	return true;
 }

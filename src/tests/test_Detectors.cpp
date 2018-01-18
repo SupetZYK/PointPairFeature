@@ -3,13 +3,13 @@
 #include <time.h>
 #include "Detectors.h"
 using namespace std;
-std::string surface_model_file = "../../../datafile/pipe.ppfs";
-//std::string scene_file = "../../../datafile/pipe_scene.ply";
-std::string scene_file = "../../../datafile/pipes/5.ply";
+//std::string surface_model_file = "../../../datafile/pipe.ppfs";
+////std::string scene_file = "../../../datafile/pipe_scene.ply";
+//std::string scene_file = "../../../datafile/pipes/5.ply";
 
-//std::string surface_model_file = "../../../datafile/cplat_s.ppfs";
+std::string surface_model_file = "../../../datafile/cplat_s.ppfs";
 //std::string scene_file = "../../../datafile/plat_scene.ply";
-////std::string scene_file = "../../../datafile/plats/1.txt";
+std::string scene_file = "../../../datafile/plats/1.txt";
 
 //std::string surface_model_file = "../../../datafile/cylinder.ppfs";
 //std::string scene_file = "../../../datafile/cylinder_scene/5.ply";
@@ -29,15 +29,14 @@ int main(int argc, char**argv) {
 	opt.MaxOverlapDistRel = 0.5;
 	opt.minScore = 0.2;
 	opt.mlsOrder = 1;
+	opt.param_1 = 5;
 	detectors.readScene(scene_file);
 	CDetectModel3D* model = detectors.readSurfaceModel(surface_model_file);
 	model->setDetectOptions(opt);
-	long t1 = clock();
-	detectors.findPart("pipe", 0.2);
-	long timespend = clock() - t1;
-	
+	detectors.findParts();
+	const CDetectModel3D::matchResult&res = model->getMatchResult();
 	detectors.showMatchResults();
-	std::cout << "Time Used: " << timespend / 1000.0 << " s" << std::endl;
+	std::cout << "Time Used: " << res.matchTime << " s, ICP time: " <<res.icpTime<<" s"<< std::endl;
 	system("pause");
 	return 0;
 }

@@ -451,15 +451,16 @@ void zyk::PPF_Space::ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const 
 	if (max_number <= 0)
 		max_number = 10;
 	max_number = std::min(max_number, int(coarse_pose_clusters.size()));
-
+	
+	//auto calculate the max_dis;
+	if (scene_res < 0) {
+		// scene_res is not provided, should calculate the scene resolution
+		scene_res = computeCloudResolution(scene);
+	}
+	float final_dis = scene_res*1.414 + 0.05;
+	std::cout << "ICP max distance computed: " << final_dis << std::endl;
 	if (max_dis < 0) {
-		//auto calculate the max_dis;
-		if (scene_res < 0) {
-			// scene_res is not provided, should calculate the scene resolution
-			scene_res = computeCloudResolution(scene);
-		}
-		max_dis = scene_res*1.414 + 0.05;
-		std::cout << "ICP max distance computed: " << max_dis << std::endl;
+		max_dis = 4 * max_dis;
 	}
 	pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
 	pcl::PointCloud<PointType>::Ptr icp_res(new pcl::PointCloud<PointType>());
@@ -468,17 +469,17 @@ void zyk::PPF_Space::ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const 
 	icp.setInputTarget(scene);
 	icp.setTransformationEpsilon(1e-10);
 	icp.setEuclideanFitnessEpsilon(0.001);
-	icp.setMaxCorrespondenceDistance(5);
 	for (size_t i = 0; i < max_number; ++i) {
 		pcl::transformPointCloud(*input_point_cloud, *rotated_model, coarse_pose_clusters[i].mean_transformation);
+		icp.setMaxCorrespondenceDistance(max_dis);
 		icp.setInputSource(rotated_model);
 		icp.align(*icp_res);
-		icp.setMaxCorrespondenceDistance(max_dis);
+		icp.setMaxCorrespondenceDistance(final_dis);
 		icp_res->clear();
 		icp.align(*icp_res,icp.getFinalTransformation());
 		//calculate icp scores
 		double score = 0;
-		double thresh = max_dis*max_dis;
+		double thresh = final_dis*final_dis;
 		for (int j = 0; j < icp.correspondences_->size(); ++j)
 		{
 			if (icp.correspondences_->at(j).distance <= thresh)
