@@ -288,7 +288,7 @@ main(int argc, char *argv[])
 			mls.setComputeNormals(true);
 			mls.setPolynomialOrder(mls_order);
 			mls.setSearchMethod(tree);
-			mls.setSearchRadius(model_feature_space.model_res);
+			mls.setSearchRadius(2*model_feature_space.model_res);
 			//mls.setSearchRadius(0.7*model_feature_space.model_res);
 			mls.process(*scene_keypoints);
 			scene_keyNormals = mls.getNormals();
@@ -348,6 +348,35 @@ main(int argc, char *argv[])
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
 	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, two_ball_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, second_distance_thresh, num_clusters_per_group, pose_clusters);
 	
+	if(num_clusters_per_group<0)
+	{
+		//gather some information for paper, 
+		//use pipe scene, 0.05, no group
+		vector<int> correct_pose(100,0);
+		vector<int> incorrect_pose(100,0);
+		float correct_vote=0.0, incorrect_vote=0.0;
+		for (int i = 0; i < pose_clusters.size(); ++i) {
+			int vote = pose_clusters[i].old_vote_count;
+			if (pose_clusters[i].vote_count > show_vote_thresh) {
+				correct_pose[vote]+=pose_clusters[i].size();
+				correct_vote += pose_clusters[i].old_vote_count;
+			}
+			else
+			{
+				incorrect_pose[vote]+=pose_clusters[i].size();
+				incorrect_vote += pose_clusters[i].old_vote_count;
+			}
+		}
+		//write to txt file
+		ofstream ofs;
+		ofs.open("res1.txt");
+		for (int i = 0; i < 100; ++i) {
+			ofs << correct_pose[i] << "  " << incorrect_pose[i] << endl;
+		}
+		ofs << "correct vote: " << correct_vote << endl;
+		ofs << "incorrect vote: " << incorrect_vote << endl;
+		ofs.close();
+	}
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
 	int number = pose_clusters.size();

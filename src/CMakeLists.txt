@@ -4,9 +4,11 @@ project(ppf_recoginition)
 
 
 set(PCL_DIR "D:/Program Files/PCL 1.8.0/cmake")
+#set(PCL_DIR "D:/Program Files/PCL/cmake")
 
 
 #OpenCV library
+#set(OpenCV_DIR "D:/VC_Lib/opencv/build")
 #find_package(OpenCV 3.0 REQUIRED)
 #include_directories(${OpenCV_INCLUDE_DIRS})
 

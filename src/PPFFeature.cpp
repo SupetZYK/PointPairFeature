@@ -893,17 +893,21 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 					int ppf_box_index = getppfBoxIndex(current_ppf);
 					if (ppf_box_index == -1)
 						continue;
-					//Check and set flag
-					int scene_rotation_discretized = floor((current_ppf.ppf.alpha_m + M_PI) / 2 / M_PI * 32);
-					if (vote_flag[ppf_box_index] & (1 << scene_rotation_discretized))
-						continue;
-					else
-						vote_flag[ppf_box_index] |= 1 << scene_rotation_discretized;
+					
 					//now calculate alpha of current_ppf
 					double current_alpha = computeAlpha(rp, rn, sp);
 					//18-1-16, bug on pcl 1.8.0 normal compute
 					if (!pcl_isfinite(current_alpha))
 						continue;
+
+					//Check and set flag, 2018-2-3, zyk, bug fixed, change the following
+					//int scene_rotation_discretized = floor((current_ppf.ppf.alpha_m + M_PI) / 2 / M_PI * 32);
+					int scene_rotation_discretized = floor((current_alpha + M_PI) / 2 / M_PI * 32);
+					if (vote_flag[ppf_box_index] & (1 << scene_rotation_discretized))
+						continue;
+					else
+						vote_flag[ppf_box_index] |= 1 << scene_rotation_discretized;
+
 					neighboring_ppf_box_index_vec.clear();
 					neighboring_ppf_box_index_vec.push_back(ppf_box_index);
 					if(spread_ppf_switch)
@@ -1016,7 +1020,7 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 	}
 
 	// second cluster by distance
-	// group those clear clusters together and rank them
+	// group those close clusters together and rank them
 	if (num_clusters_per_group > 0){
 		cout << "Now do grouping, number of clusters per group is : " << num_clusters_per_group << endl;
 		vector<vector<pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>> groups;
@@ -1132,6 +1136,7 @@ void zyk::PPF_Space::recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointClo
 			}
 
 		}
+		pose_clusters[num].old_vote_count = pose_clusters[num].vote_count;
 		pose_clusters[num].vote_count = score / centered_point_cloud->size();
 	}
 }

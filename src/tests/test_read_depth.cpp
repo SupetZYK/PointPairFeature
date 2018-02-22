@@ -2,15 +2,14 @@
 #include <fstream>
 #include <string>
 #include <opencv2/rgbd.hpp>
-#include <common.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include <pcl/io/ply_io.h>
+#include <util_pcl.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/common/transforms.h>
-
-
 IplImage * loadDepth(std::string a_name)
 {
 	std::ifstream l_file(a_name.c_str(), std::ofstream::in | std::ofstream::binary);
@@ -115,7 +114,7 @@ int main(int argc, char**argv)
 		cv_depth_2_pcl_cloud(s, intrinsicK, scene);
 
 		pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
-		readPointCloud("D:/Documents/Projects/PCL/code/datafile/ACCV3D/lamp/mesh.ply", "ply", model);
+		zyk::readPointCloud("D:/Documents/Projects/PCL/code/datafile/ACCV3D/lamp/mesh.ply",model);
 
 		//
 		//make transform to model
@@ -138,6 +137,9 @@ int main(int argc, char**argv)
 		keyPointVisual.addPointCloud(rotated_model, pcl::visualization::PointCloudColorHandlerCustom<PointType>(scene, 255.0, 0.0, 0.0), "model");
 		keyPointVisual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "scene");
 		keyPointVisual.spin();
+
+		//save the ply scne
+		pcl::io::savePLYFile("D:/Documents/Projects/PCL/code/datafile/lamp_depth0.ply", *scene);
 	}
 
 	return 0;

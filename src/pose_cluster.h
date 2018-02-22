@@ -14,7 +14,7 @@ namespace zyk
 		float first_angle;
 	public:
 		//pose_cluster(){};
-	  pose_cluster(const Eigen::Affine3f& transformation, float vote){ checkAndPutIn(transformation, vote, 100, 100); };
+	  pose_cluster(const Eigen::Affine3f& transformation, float vote):vote_count(0.0),old_vote_count(0.0){ checkAndPutIn(transformation, vote, 100, 100); };
 		~pose_cluster(){};
 		bool checkAndPutIn(const Eigen::Affine3f& transformation, float vote, float distance_thresh, float angle_thresh);
 		bool checkAndPutIn_test_ver(const Eigen::Affine3f& transformation, float vote, float distance_thresh, float angle_thresh);
@@ -27,7 +27,8 @@ namespace zyk
 
 		std::vector < Eigen::Affine3f, Eigen::aligned_allocator<Eigen::Affine3f> > transformations;
 		std::vector < int> voteLists;
-		float vote_count = 0.0;
+		float vote_count;
+		float old_vote_count;
 	};
 
 

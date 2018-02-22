@@ -8,8 +8,8 @@ using namespace std;
 //std::string scene_file = "../../../datafile/pipes/5.ply";
 
 std::string surface_model_file = "../../../datafile/cplat_s.ppfs";
-//std::string scene_file = "../../../datafile/plat_scene.ply";
-std::string scene_file = "../../../datafile/plats/1.txt";
+std::string scene_file = "../../../datafile/plat_scene.ply";
+//std::string scene_file = "../../../datafile/plats/1.txt";
 
 //std::string surface_model_file = "../../../datafile/cylinder.ppfs";
 //std::string scene_file = "../../../datafile/cylinder_scene/5.ply";
@@ -27,7 +27,7 @@ int main(int argc, char**argv) {
 	opt.downSampleRatio = 0.08;
 	opt.maxNumber = 20;
 	opt.MaxOverlapDistRel = 0.5;
-	opt.minScore = 0.2;
+	opt.minScore = 0.4;
 	opt.mlsOrder = 1;
 	opt.param_1 = 5;
 	detectors.readScene(scene_file);

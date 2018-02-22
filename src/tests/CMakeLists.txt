@@ -20,5 +20,5 @@ add_executable(test_normal  test_normal_compute.cpp)
 target_link_libraries(test_normal ${PCL_LIBRARIES})
 
 add_executable(test_read_depth test_read_depth.cpp)
-target_link_libraries(test_read_depth ${PCL_LIBRARIES} rgbd)
+target_link_libraries(test_read_depth ${PCL_LIBRARIES} rgbd zyk_ppf)
 
