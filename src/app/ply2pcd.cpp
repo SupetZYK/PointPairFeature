@@ -1,4 +1,5 @@
-
+#include <util_pcl.h>
+#include <pcl/console/parse.h>
 #include <pcl/io/pcd_io.h>
 std::string model_filename_;
 std::string save_filename_;
@@ -59,7 +60,7 @@ main(int argc, char *argv[])
 	showHelp(argv[0]);
 	pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
 
-		if (!readPointCloud(model_filename_, "ply", model) )
+        if (!readPointCloud(model_filename_, model) )
 		{
 			return(-1);
 		}

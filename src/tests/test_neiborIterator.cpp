@@ -1,4 +1,4 @@
-#include "common.h"
+#include "util.h"
 #include "Voxel_grid.h"
 int main(int argc, char**argv) {
 

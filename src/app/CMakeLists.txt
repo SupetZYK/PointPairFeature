@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 
-add_executable(ply2pcd ply2pcd.cpp)
-target_link_libraries(ply2pcd ${PCL_LIBRARIES})
+#add_executable(ply2pcd ply2pcd.cpp)
+#target_link_libraries(ply2pcd ${PCL_LIBRARIES})
 
-add_executable(txt2pcd txt2pcd.cpp)
-target_link_libraries(txt2pcd ${PCL_LIBRARIES})
+#add_executable(txt2pcd txt2pcd.cpp)
+#target_link_libraries(txt2pcd ${PCL_LIBRARIES})
 
 add_executable(ppf_match ppf_match.cpp)
 target_link_libraries(ppf_match zyk_ppf ${PCL_LIBRARIES})

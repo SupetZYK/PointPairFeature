@@ -1,4 +1,3 @@
-#include "common.h"
 #include "Voxel_grid.h"
 #include "PPFFeature.h"
 #include "pose_cluster.h"

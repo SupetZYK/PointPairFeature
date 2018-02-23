@@ -1,4 +1,5 @@
 #include "util_pcl.h"
+#include <util.h>
 #include "Voxel_grid.h"
 #include "PPFFeature.h"
 #include "pose_cluster.h"
@@ -423,6 +424,7 @@ main(int argc, char *argv[])
 	//	arStore.Close();
 	//	fileStore.Close();
 	//}
+    std::cout<<"save file name: "<<save_filename_<<std::endl;
 	getchar();
 	model_feature_space.save(save_filename_);
 	return 0;

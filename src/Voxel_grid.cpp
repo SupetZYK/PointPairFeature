@@ -1,6 +1,6 @@
 #include "Voxel_grid.h"
 #include <string.h>
-
+#include <float.h>
 void zyk::CVoxel_grid::Init(int x_div, int y_div, int z_div, pcl::PointCloud<PointType>::Ptr pntcloud)
 {
 	assert(x_div >= 1 && y_div >= 1 && z_div >= 1);

@@ -406,3 +406,4 @@ void CDetectors3D::clear()
 	detectObjects.clear();
 }
 
+

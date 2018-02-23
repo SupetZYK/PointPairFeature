@@ -1,4 +1,4 @@
-#include "common.h"
+#include "util_pcl.h"
 #include <pcl/console/parse.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/surface/mls.h>
