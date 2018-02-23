@@ -534,6 +534,8 @@ bool zyk::PPF_Space::computeAllPPF()
 						continue;
 				}
 				ppf.ppf.alpha_m = computeAlpha(centered_point_cloud->at(i).getVector3fMap(), input_point_normal->at(i).getNormalVector3fMap(), centered_point_cloud->at(j).getVector3fMap());
+				if (!pcl_isfinite(ppf.ppf.alpha_m))
+					continue;
 				ppf_vector.push_back(ppf);
 			}
 		}
