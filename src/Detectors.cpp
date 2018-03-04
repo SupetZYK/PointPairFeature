@@ -73,98 +73,55 @@ bool CDetectModel3D::readSurfaceModel(string filePath)
 
 bool CDetectModel3D::createSurfaceModel(string filePath, string savePath, string objName)
 {
-	pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr model_normals(new pcl::PointCloud<NormalType>());
-	if (!zyk::readPointCloud(filePath, model))
-		return false;
-	std::string save_filename_;
-	if (savePath.empty()) {
-		int pos = filePath.find_last_of('.');
-		save_filename_ = filePath.substr(0, pos);
-		save_filename_ += ".ppfs";
-	}
-	else
-		save_filename_ = savePath;
+  pcl::PointCloud<pcl::PointNormal>::Ptr model(new pcl::PointCloud<pcl::PointNormal>());
+  pcl::PointCloud<pcl::PointNormal>::Ptr keypoints(new pcl::PointCloud<pcl::PointNormal>());
+  double min_coord[3],max_coord[3];
+  if(!zyk::mesh_sampling(filePath,30000,*model,min_coord,max_coord)){
+    PCL_ERROR("Samping mesh fail!");
+    return -1;
+  }
+  double model_length = max_coord[0] - min_coord[0];
+  double model_width = max_coord[1] - min_coord[1];
+  double model_height = max_coord[2] - min_coord[2];
+  double d_max = sqrt(model_length*model_length + model_width*model_width + model_height*model_height);
+  double model_ss_ = mTrainOptions.downSampleRatio*d_max;
 
-	double max_coord[3];
-	double min_coord[3];
-	float resolution = static_cast<float> (zyk::computeCloudResolution(model, max_coord, min_coord));
+  zyk::SmartDownSamplePointAndNormal(model,30,model_ss_,keypoints);
 
-	double model_length = max_coord[0] - min_coord[0];
-	double model_width = max_coord[1] - min_coord[1];
-	double model_height = max_coord[2] - min_coord[2];
-	Eigen::Vector3f model_approximate_center;
-	model_approximate_center(0) = (max_coord[0] + min_coord[0]) / 2;
-	model_approximate_center(1) = (max_coord[1] + min_coord[1]) / 2;
-	model_approximate_center(2) = (max_coord[2] + min_coord[2]) / 2;
+  pcl::PointCloud<PointType>::Ptr input_points (new pcl::PointCloud<PointType>());
+  pcl::PointCloud<NormalType>::Ptr input_normals (new pcl::PointCloud<NormalType>());
+  pcl::copyPointCloud(*keypoints,*input_points);
+  pcl::copyPointCloud(*keypoints,*input_normals);
 
 
-	double d_max = sqrt(model_length*model_length + model_width*model_width + model_height*model_height);
-	double model_ss_ = mTrainOptions.downSampleRatio*d_max;
-	std::cout << "Model resolution:       " << resolution << std::endl;
-	std::cout << "Model sampling distance step:    " << model_ss_ << std::endl;
+  if (objName.empty()) {
+    char tmp[100];
+    _splitpath(filePath.c_str(), NULL, NULL, tmp, NULL);
+    objName = std::string(tmp);
+  }
+  this->ObjectName = objName;
+
+  std::string save_filename_;
+  if (savePath.empty()) {
+    int pos = filePath.find_last_of('.');
+    save_filename_ = filePath.substr(0, pos);
+    save_filename_ += ".ppfs";
+  }
+  else
+    save_filename_ = savePath;
 
 
-	std::cout << "Model length: " << model_length << std::endl;
-	std::cout << "Model width: " << model_width << std::endl;
-	std::cout << "Model height: " << model_height << std::endl;
+  if (p_PPF != NULL) {
+    delete p_PPF;
+    p_PPF = NULL;
+  }
+  p_PPF = new(zyk::PPF_Space);
+  p_PPF->init(objName, input_points, input_normals, 20, 20, true);
 
-	pcl::PointCloud<PointType>::Ptr pnts_tmp(new pcl::PointCloud<PointType>());
-	pcl::MovingLeastSquares<PointType, PointType> mls;
-	pcl::search::KdTree<PointType>::Ptr tree;
-	// Set parameters
-	mls.setInputCloud(model);
-	mls.setComputeNormals(true);
-	mls.setPolynomialOrder(mTrainOptions.mlsOrder);
-	mls.setSearchMethod(tree);
-	mls.setSearchRadius(model_ss_);
-	mls.process(*pnts_tmp);
-	model = pnts_tmp;
-	model_normals = mls.getNormals();
+  p_PPF->model_res = model_ss_;
 
-	for (int i = 0; i < model->size(); ++i)
-	{
-		Eigen::Vector3f pnt_temp = model->points[i].getVector3fMap();
-		Eigen::Vector3f normal_temp = model_normals->points[i].getNormalVector3fMap();
-		if ((pnt_temp - model_approximate_center).dot(normal_temp) < 0)
-		{
-			model_normals->points[i].normal_x = -normal_temp(0);
-			model_normals->points[i].normal_y = -normal_temp(1);
-			model_normals->points[i].normal_z = -normal_temp(2);
-		}
-	}
+  p_PPF->save(save_filename_);
 
-	pcl::PointCloud<PointType>::Ptr keypoints(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<NormalType>::Ptr keyNormals(new pcl::PointCloud<NormalType>());
-
-	zyk::uniformDownSamplePointAndNormal(model, model_normals, model_ss_, keypoints, keyNormals);
-
-	std::vector<double>model_size;
-	model_size.push_back(model_width);
-	model_size.push_back(model_length);
-	model_size.push_back(model_height);
-	std::sort(model_size.begin(), model_size.end());
-	if (objName.empty()) {
-		char tmp[100];
-		_splitpath(filePath.c_str(), NULL, NULL, tmp, NULL);
-		objName = std::string(tmp);
-	}
-	this->ObjectName = objName;
-	std::cout << "Trained object Name: " << objName << std::endl;
-
-	if (p_PPF != NULL) {
-		delete p_PPF;
-		p_PPF = NULL;
-	}
-	p_PPF = new(zyk::PPF_Space);
-	p_PPF->init(objName, keypoints, keyNormals, 20, 25);
-
-	p_PPF->model_size[0] = model_size[0];
-	p_PPF->model_size[1] = model_size[1];
-	p_PPF->model_size[2] = model_size[2];
-	p_PPF->model_res = model_ss_;
-
-	p_PPF->save(save_filename_);
 	return true;
 }
 
@@ -259,6 +216,7 @@ bool CDetectors3D::findPart(const string objectName, double keyPointRatio)
 
 	//downsample
 	pcl::IndicesPtr sampled_index_ptr;
+  //@TODO
 	float scene_ss_ = (modelDetector.mDetectOptions.downSampleRatio / modelDetector.mTrainOptions.downSampleRatio)*pPPF->model_res;
 	sampled_index_ptr = zyk::uniformDownSamplePoint(scene, scene_ss_, scene_keypoints);
 

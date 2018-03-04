@@ -1,33 +1,32 @@
 #include <util.h>
-#include <math.h>
 #include <string>
 #include <string.h>
-double zyk::dot(const float* n1, const float* n2, const int dim)
-{
-	double res = 0;
-	for (int i = 0; i < dim; ++i)
-		res += n1[i] * n2[i];
-	return res;
-}
+//double zyk::dot(const float* n1, const float* n2, const int dim)
+//{
+//	double res = 0;
+//	for (int i = 0; i < dim; ++i)
+//		res += n1[i] * n2[i];
+//	return res;
+//}
 
-double zyk::norm(const float* n, const int dim)
-{
-	double res = 0;
-	for (int i = 0; i < dim; ++i)
-		res += n[i] * n[i];
-	return sqrt(res);
-}
+//double zyk::norm(const float* n, const int dim)
+//{
+//	double res = 0;
+//	for (int i = 0; i < dim; ++i)
+//		res += n[i] * n[i];
+//	return sqrt(res);
+//}
 
-double zyk::dist(const float* n1, const float* n2, const int dim)
-{
-	double res = 0;
-	for (int i = 0; i < dim; ++i)
-	{
-		double tmp = n1[i]- n2[i];
-		res += tmp*tmp;
-	}
-	return sqrt(res);
-}
+//double zyk::dist(const float* n1, const float* n2, const int dim)
+//{
+//	double res = 0;
+//	for (int i = 0; i < dim; ++i)
+//	{
+//		double tmp = n1[i]- n2[i];
+//		res += tmp*tmp;
+//	}
+//	return sqrt(res);
+//}
 
 
 #ifndef WIN32
@@ -47,7 +46,7 @@ void _splitpath(const char *path, char *drive_, char *dir_, char *fname_, char *
       fname=fname_;
   else
       fname=new char[100];
-  if(ext!=NULL)
+  if(ext_!=NULL)
       ext=ext_;
   else
       ext=new char[50];

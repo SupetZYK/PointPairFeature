@@ -38,14 +38,23 @@ typedef pcl::ReferenceFrame RFType;
 //ZYK_EXPORTS bool downSamplePointCloud(const pcl::PointCloud<PointType>::Ptr &scene, const double relSamplingDistance,
 //	pcl::PointCloud<PointType>::Ptr &outCloud, const int method = 1);
 namespace zyk{
+  ZYK_EXPORTS void getBoundingBox(const pcl::PointCloud<PointType>::ConstPtr &cloud, double min_coord[3], double max_coord[3]);
 	ZYK_EXPORTS pcl::IndicesPtr uniformDownSamplePoint(pcl::PointCloud<PointType>::Ptr pointcloud, double relSamplingDistance, pcl::PointCloud<PointType>::Ptr outCloud);
 	ZYK_EXPORTS pcl::IndicesPtr uniformDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double relSamplingDistance,
 		pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNormal);
-	ZYK_EXPORTS bool SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double ang_degree_thresh, double relSamplingDistance,
+  ZYK_EXPORTS pcl::IndicesPtr uniformDownSamplePointAndNormal(pcl::PointCloud<pcl::PointNormal>::Ptr pointcloud, double relSamplingDistance,
+    pcl::PointCloud<pcl::PointNormal>::Ptr outCloud);
+  ZYK_EXPORTS pcl::IndicesPtr SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double ang_degree_thresh, double relSamplingDistance,
 		pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNormal);
+  ZYK_EXPORTS pcl::IndicesPtr SmartDownSamplePointAndNormal(pcl::PointCloud<pcl::PointNormal>::Ptr pointcloud,  double ang_degree_thresh, double relSamplingDistance,
+    pcl::PointCloud<pcl::PointNormal>::Ptr outCloud);
 	ZYK_EXPORTS double computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud, double max_coord[3] = NULL, double min_coord[3] = NULL);
 	ZYK_EXPORTS bool readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNor = NULL);
+  ZYK_EXPORTS bool readPointNormalCloud(std::string filename,pcl::PointCloud<pcl::PointNormal>::Ptr outCloud);
 	//ZYK_EXPORTS void ISSmethod(const PointCloud<PointType>::Ptr &inCloud, double salientRatio, double NMPratio, PointCloud<PointType>::Ptr &outCloud);
 	ZYK_EXPORTS void transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCloud<NormalType>&normals_out, const Eigen::Affine3f& transform);
-	ZYK_EXPORTS inline double dot(const NormalType& n1, const NormalType&n2){ return n1.normal_x*n2.normal_x + n1.normal_y*n2.normal_y + n1.normal_z*n2.normal_z; };
+  ZYK_EXPORTS bool mesh_sampling(std::string file_path, size_t n_samples, pcl::PointCloud<pcl::PointNormal> & cloud_out,double min_coord[3]=NULL, double max_coord[3]=NULL);
+  ZYK_EXPORTS bool uniform_mesh_sampling(std::string file_path, float sample_ratio, pcl::PointCloud<pcl::PointNormal> & cloud_out, double min_coord[3], double max_coord[3]);
+
+  ZYK_EXPORTS inline double dot(const NormalType& n1, const NormalType&n2){ return n1.normal_x*n2.normal_x + n1.normal_y*n2.normal_y + n1.normal_z*n2.normal_z; }
 }

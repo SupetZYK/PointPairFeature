@@ -16,8 +16,9 @@ target_link_libraries(test_Detectors zyk_ppf)
 add_executable(test_neiboriterator test_neiborIterator.cpp)
 target_link_libraries(test_neiboriterator zyk_ppf)
 
-#add_executable(test_normal  test_normal_compute.cpp)
-#target_link_libraries(test_normal ${PCL_LIBRARIES})
+add_executable(test_normal  test_normal_compute.cpp)
+target_link_libraries(test_normal ${PCL_LIBRARIES} zyk_ppf)
+
 
 #add_executable(test_read_depth test_read_depth.cpp)
 #target_link_libraries(test_read_depth ${PCL_LIBRARIES} rgbd zyk_ppf)

@@ -12,6 +12,7 @@ using namespace zyk;
 zyk::PPF_Space::PPF_Space()
 	:ignore_plane_switch(false)
 	, mName("")
+  , ver_(1)
 	, grid_f1_div(10)
 	, grid_f2_div(10)
 	, grid_f3_div(10)
@@ -28,7 +29,35 @@ zyk::PPF_Space::PPF_Space()
 zyk::PPF_Space::~PPF_Space()
 {
 	for (int i = 0; i < ppf_box_vector.size();i++)
-		if (ppf_box_vector[i] != NULL) delete ppf_box_vector[i];
+    if (ppf_box_vector[i] != NULL) delete ppf_box_vector[i];
+}
+
+bool PPF_Space::init(string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, std::vector<std::vector<int> > &view_based_indexes, int angle_div, int distance_div, bool ignore_plane)
+{
+  mName = Name;
+  ver_ = 2;
+  input_point_cloud = pointcloud;
+  input_point_normal = pointNormal;
+  //div
+  assert(angle_div > 0 && distance_div > 0);
+  //switch
+  ignore_plane_switch = ignore_plane;
+  //ppf
+  if (!computeALL_Visible_PPF(view_based_indexes))
+    return false;
+
+  if (!constructGrid(angle_div,distance_div))
+    return false;
+  ///// INFO
+  cout << "During training, total ppf box number is: " << total_box_num << endl;
+  zyk::PPF ppf;
+  ppf.ppf.f1 = max_p(0);
+  ppf.ppf.f2 = max_p(1);
+  ppf.ppf.f3 = max_p(2);
+  ppf.ppf.f4 = max_p(3);
+  cout << "The max_p's index is: " << getppfBoxIndex(ppf) << endl;
+  return true;
+
 }
 //bool zyk::PPF_Space::init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step, bool ignore_plane)
 //{
@@ -77,77 +106,18 @@ zyk::PPF_Space::~PPF_Space()
 bool zyk::PPF_Space::init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int angle_div, int distance_div, bool ignore_plane)
 {
 	mName = Name;
-	////中心对称标志
-	//model_x_centrosymmetric = x_s;
-	//model_y_centrosymmetric = y_s;
-	//model_z_centrosymmetric = z_s;
-	////中心
-	//point_cloud_center = pointCloudCenter;
-	//ptr
+  ver_ = 1;
 	input_point_cloud = pointcloud;
-	float minx, miny, minz, maxx, maxy, maxz;
-	for (size_t i = 0; i < pointcloud->size(); ++i) {
-		if (i == 0) {
-			maxx = minx = pointcloud->at(i).x;
-			maxy = miny = pointcloud->at(i).y;
-			maxz = minz = pointcloud->at(i).z;
-		}
-		else {
-			maxx = std::max(maxx, pointcloud->at(i).x); minx = std::min(minx, pointcloud->at(i).x);
-			maxy = std::max(maxy, pointcloud->at(i).y); miny = std::min(miny, pointcloud->at(i).y);
-			maxz = std::max(maxz, pointcloud->at(i).z); minz = std::min(minz, pointcloud->at(i).z);
-		}
-	}
-	cx = (minx + maxx) / 2;
-	cy = (miny + maxy) / 2;
-	cz = (minz + maxz) / 2;
-	centered_point_cloud->clear();
-	for (size_t i = 0; i < pointcloud->size(); ++i) {
-		PointType _tem;
-		_tem.x = pointcloud->at(i).x - cx;
-		_tem.y = pointcloud->at(i).y - cy;
-		_tem.z = pointcloud->at(i).z - cz;
-		centered_point_cloud->push_back(_tem);
-	}
 	input_point_normal = pointNormal;
 	//div
-	assert(angle_div > 0 && distance_div > 0);
-	grid_f1_div = angle_div;
-	grid_f2_div = angle_div;
-	grid_f3_div = angle_div;
-	grid_f4_div = distance_div;
-	grid_div_mul(0) = 1;
-	grid_div_mul(1) = grid_div_mul(0)*grid_f1_div;
-	grid_div_mul(2) = grid_div_mul(1)*grid_f2_div;
-	grid_div_mul(3) = grid_div_mul(2)*grid_f3_div;
-	total_box_num = grid_div_mul(3)*grid_f4_div;
-	assert(total_box_num > 0);
-	
+  assert(angle_div > 0 && distance_div > 0);
 	//switch
 	ignore_plane_switch = ignore_plane;
 	//ppf
 	if (!computeAllPPF())
 		return false;
-	//size
-	if (!findBoundingBox())
-		return false;
-	///////////////MODIFIED 17-10-22
-	//min_p is not needed anymore
-	//Eigen::Array4f dim = max_p - min_p;
-	leaf_size(0) = M_PI / grid_f1_div;
-	leaf_size(1) = M_PI / grid_f2_div;
-	leaf_size(2) = M_PI / grid_f3_div;
-	// set leaf size to be a little bit larger,10%
-	leaf_size(3) = 1.1*max_p(3) / grid_f4_div;
-	cout << "Discretized distance is: " << leaf_size(3) << endl;
-	inv_leaf_size(0) = 1 / leaf_size(0);
-	inv_leaf_size(1) = 1 / leaf_size(1);
-	inv_leaf_size(2) = 1 / leaf_size(2);
-	inv_leaf_size(3) = 1 / leaf_size(3);
 
-	//grid
-	ppf_box_vector.resize(total_box_num);
-	if (!constructGrid())
+  if (!constructGrid(angle_div,distance_div))
 		return false;
 	///// INFO
 	cout << "During training, total ppf box number is: " << total_box_num << endl;
@@ -192,8 +162,57 @@ bool zyk::PPF_Space::findBoundingBox()
 	return true;
 }
 
-bool zyk::PPF_Space::constructGrid()
+bool zyk::PPF_Space::constructGrid(int angle_div,int distance_div)
 {
+//  float diameter = zyk::norm(model_size,3);
+  double min_coord[3],max_coord[3];
+  zyk::getBoundingBox(input_point_cloud,min_coord,max_coord);
+  double diameter = zyk::dist(min_coord,max_coord,3);
+  cx = (min_coord[0] + max_coord[0]) / 2;
+  cy = (min_coord[1] + max_coord[1]) / 2;
+  cz = (min_coord[2] + max_coord[2]) / 2;
+  centered_point_cloud->clear();
+  for (size_t i = 0; i < input_point_cloud->size(); ++i) {
+    PointType _tem;
+    _tem.x = input_point_cloud->at(i).x - cx;
+    _tem.y = input_point_cloud->at(i).y - cy;
+    _tem.z = input_point_cloud->at(i).z - cz;
+    centered_point_cloud->push_back(_tem);
+  }
+  std::vector<float>tmp;
+  tmp.push_back(max_coord[0]-min_coord[0]);
+  tmp.push_back(max_coord[1]-min_coord[1]);
+  tmp.push_back(max_coord[2]-min_coord[2]);
+  std::sort(tmp.begin(),tmp.end());
+  model_size[0]=tmp[0];
+  model_size[1]=tmp[1];
+  model_size[2]=tmp[2];
+  //size
+  if (!findBoundingBox())
+    return false;
+  leaf_size(0)=M_PI/angle_div;
+  leaf_size(1) = leaf_size(0);
+  leaf_size(2) = leaf_size(0);
+  leaf_size(3) = diameter/distance_div;
+  inv_leaf_size(0) = 1 / leaf_size(0);
+  inv_leaf_size(1) = 1 / leaf_size(1);
+  inv_leaf_size(2) = 1 / leaf_size(2);
+  inv_leaf_size(3) = 1 / leaf_size(3);
+
+  grid_f1_div = angle_div;
+  grid_f2_div = angle_div;
+  grid_f3_div = angle_div;
+  grid_f4_div = distance_div;
+  grid_div_mul(0) = 1;
+  grid_div_mul(1) = grid_div_mul(0)*grid_f1_div;
+  grid_div_mul(2) = grid_div_mul(1)*grid_f2_div;
+  grid_div_mul(3) = grid_div_mul(2)*grid_f3_div;
+  total_box_num = grid_div_mul(3)*grid_f4_div;
+  assert(total_box_num > 0);
+
+  //grid
+  ppf_box_vector.resize(total_box_num);
+
 	if (ppf_vector.empty())
 		return false;
 	for (int i = 0; i < ppf_vector.size(); i++)
@@ -496,16 +515,17 @@ void zyk::PPF_Space::ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const 
 
 bool zyk::PPF_Space::computeAllPPF()
 {
+  //Mofified 2018-3-3 by zyk, no need to use centered_point_cloud to compute all ppf, input_point_cloud is same
 	//check
-	if (centered_point_cloud == NULL || input_point_normal == NULL)
+  if (input_point_cloud == NULL || input_point_normal == NULL)
 		return false;
-	if (centered_point_cloud->empty() || input_point_normal->empty())
+  if (input_point_cloud->empty() || input_point_normal->empty())
 		return false;
-	if (centered_point_cloud->size() != input_point_normal->size())
+  if (input_point_cloud->size() != input_point_normal->size())
 		return false;
 
 	//loop
-	for (int i = 0; i < centered_point_cloud->size(); i++)
+  for (int i = 0; i < input_point_cloud->size(); i++)
 	{
 		/*if (model_x_centrosymmetric)
 		{
@@ -522,18 +542,18 @@ bool zyk::PPF_Space::computeAllPPF()
 			if (centered_point_cloud->at(i).y > point_cloud_center(1))
 				continue;
 		}*/
-		for (int j = 0; j < centered_point_cloud->size(); j++)
+    for (int j = 0; j < input_point_cloud->size(); j++)
 		{
 			if (i != j)
 			{
 				PPF ppf;
-				computeSinglePPF(centered_point_cloud, input_point_normal, i, j, ppf);
+        computeSinglePPF(input_point_cloud, input_point_normal, i, j, ppf);
 				if (ignore_plane_switch)
 				{
 					if (abs(ppf.ppf.f3) < 0.01 && abs(ppf.ppf.f1-M_PI_2)<0.01&&abs(ppf.ppf.f2-M_PI_2)<0.01)
 						continue;
 				}
-				ppf.ppf.alpha_m = computeAlpha(centered_point_cloud->at(i).getVector3fMap(), input_point_normal->at(i).getNormalVector3fMap(), centered_point_cloud->at(j).getVector3fMap());
+        ppf.ppf.alpha_m = computeAlpha(input_point_cloud->at(i).getVector3fMap(), input_point_normal->at(i).getNormalVector3fMap(), input_point_cloud->at(j).getVector3fMap());
 				if (!pcl_isfinite(ppf.ppf.alpha_m))
 					continue;
 				ppf_vector.push_back(ppf);
@@ -541,7 +561,53 @@ bool zyk::PPF_Space::computeAllPPF()
 		}
 	}
 
-	return true;
+  return true;
+}
+
+bool PPF_Space::computeALL_Visible_PPF(std::vector<std::vector<int> > &view_based_indexes)
+{
+  //check
+  if (input_point_cloud == NULL || input_point_normal == NULL)
+    return false;
+  if (input_point_cloud->empty() || input_point_normal->empty())
+    return false;
+  if (input_point_cloud->size() != input_point_normal->size())
+    return false;
+  if(view_based_indexes.size()<10)
+    return false;
+  //keep a map to store index pair
+  std::set<std::pair<int,int> > pair_set;
+  //init the occlusion vector
+  occlusion_weights=std::vector<float>(input_point_cloud->size(),0.0);
+  float inc=1.0/view_based_indexes.size();
+  for(int i=0;i<view_based_indexes.size();++i){
+    for(int j=0;j<view_based_indexes[i].size();++j){
+      occlusion_weights[j]+=inc;
+      for(int k=0;k<view_based_indexes[i].size();++k){
+        if(k==j)continue;
+        if(pair_set.find(std::pair<int,int>(j,k))!=pair_set.end())
+        {
+          continue;
+        }
+        else
+        {
+          pair_set.insert(std::pair<int,int>(j,k));
+          PPF ppf;
+          computeSinglePPF(input_point_cloud, input_point_normal, j, k, ppf);
+          if (ignore_plane_switch)
+          {
+            if (abs(ppf.ppf.f3) < 0.01 && abs(ppf.ppf.f1-M_PI_2)<0.01&&abs(ppf.ppf.f2-M_PI_2)<0.01)
+              continue;
+          }
+          ppf.ppf.alpha_m = computeAlpha(input_point_cloud->at(j).getVector3fMap(), input_point_normal->at(j).getNormalVector3fMap(), input_point_cloud->at(k).getVector3fMap());
+          if (!pcl_isfinite(ppf.ppf.alpha_m))
+            continue;
+          ppf_vector.push_back(ppf);
+        }
+      }
+    }
+  }
+  return true;
 }
 void zyk::PPF_Space::getppfBoxCoord(PPF& ppf, Eigen::Vector4i& ijk)
 {

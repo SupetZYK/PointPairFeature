@@ -1,4 +1,5 @@
 #include "util_pcl.h"
+#include <util.h>
 
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/keypoints/uniform_sampling.h>
@@ -11,10 +12,43 @@
 #include "SmartSampling.hpp"
 #include <pcl/common/transforms.h>
 #include <pcl/io/ply/ply_parser.h>
+#include <pcl/filters/voxel_grid.h>
+
+#include <pcl/io/vtk_lib_io.h>
+#include <vtkVersion.h>
+#include <vtkPLYReader.h>
+#include <vtkOBJReader.h>
+#include <vtkTriangle.h>
+#include <vtkTriangleFilter.h>
+#include <vtkPolyDataMapper.h>
 using namespace std;
 using namespace pcl;
 
+void zyk::getBoundingBox(const pcl::PointCloud<PointType>::ConstPtr &cloud, double min_coord[3], double max_coord[3])
+{
+  max_coord[0] = cloud->at(0).x;
+  min_coord[0] = cloud->at(0).x;
+  max_coord[1] = cloud->at(0).y;
+  min_coord[1] = cloud->at(0).y;
+  max_coord[2] = cloud->at(0).z;
+  min_coord[2] = cloud->at(0).z;
+  for (size_t i = 1; i < cloud->size(); ++i)
+  {
+    if (cloud->at(i).x > max_coord[0])
+      max_coord[0] = cloud->at(i).x;
+    else if (cloud->at(i).x<min_coord[0])
+      min_coord[0] = cloud->at(i).x;
+    if (cloud->at(i).y > max_coord[1])
+      max_coord[1] = cloud->at(i).y;
+    else if (cloud->at(i).y<min_coord[1])
+      min_coord[1] = cloud->at(i).y;
+    if (cloud->at(i).z > max_coord[2])
+      max_coord[2] = cloud->at(i).z;
+    else if (cloud->at(i).z < min_coord[2])
+      min_coord[2] = cloud->at(i).z;
+  }
 
+}
 
 double zyk::computeCloudResolution(const pcl::PointCloud<PointType>::ConstPtr &cloud, double max_coord[3], double min_coord[3])
 {
@@ -103,8 +137,18 @@ pcl::IndicesPtr zyk::uniformDownSamplePointAndNormal(pcl::PointCloud<PointType>:
 		outNormal->points[i]= pointNormal->points[selectedIndex->at(i)];
 	return selectedIndex;
 }
+pcl::IndicesPtr zyk::uniformDownSamplePointAndNormal(pcl::PointCloud<pcl::PointNormal>::Ptr pointcloud, double relSamplingDistance,
+  pcl::PointCloud<pcl::PointNormal>::Ptr outCloud)
+{
+  pcl::UniformSampling<pcl::PointNormal> uniform_sampling;
+  uniform_sampling.setInputCloud(pointcloud);
+  uniform_sampling.setRadiusSearch(relSamplingDistance);
+  uniform_sampling.filter(*outCloud);
+  pcl::IndicesPtr selectedIndex = uniform_sampling.getSelectedIndex();
+  return selectedIndex;
+}
 
-bool zyk::SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double ang_degree_thresh, double relSamplingDistance,
+pcl::IndicesPtr zyk::SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, double ang_degree_thresh, double relSamplingDistance,
 	pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNormal)
 {
 	pcl::SmartSampling<PointType,NormalType> sampling;
@@ -113,17 +157,44 @@ bool zyk::SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::Ptr pointclo
 	sampling.setRadiusSearch(relSamplingDistance);
 	sampling.setAngleThresh(ang_degree_thresh);
 	sampling.filter(*outCloud);
-	vector<size_t>& selectedIndex = sampling.getSelectedIndex();
+  pcl::IndicesPtr selectedIndex = sampling.getSelectedIndex();
 
 	outNormal->height = 1;
 	outNormal->is_dense = true;
-	outNormal->points.resize(selectedIndex.size());
-	for (int i = 0; i < selectedIndex.size(); i++)
-		outNormal->points[i] = pointNormal->points[selectedIndex[i]];
-	return true;
+  outNormal->points.resize(selectedIndex->size());
+  for (int i = 0; i < selectedIndex->size(); i++)
+    outNormal->points[i] = pointNormal->points[selectedIndex->at(i)];
+  return selectedIndex;
 }
 
-
+pcl::IndicesPtr zyk::SmartDownSamplePointAndNormal(pcl::PointCloud<pcl::PointNormal>::Ptr pointcloud,  double ang_degree_thresh, double relSamplingDistance,
+  pcl::PointCloud<pcl::PointNormal>::Ptr outCloud)
+{
+  pcl::SmartSampling<pcl::PointNormal,pcl::PointNormal> sampling;
+  sampling.setInputCloud(pointcloud);
+  sampling.setNormals(pointcloud);
+  sampling.setRadiusSearch(relSamplingDistance);
+  sampling.setAngleThresh(ang_degree_thresh);
+  sampling.filter(*outCloud);
+  pcl::IndicesPtr selectedIndex = sampling.getSelectedIndex();
+  return selectedIndex;
+}
+bool zyk::readPointNormalCloud(std::string filename,pcl::PointCloud<pcl::PointNormal>::Ptr outCloud)
+{
+  std::string fileformat;
+  int pos = filename.find_last_of('.') + 1;
+  fileformat = filename.substr(pos);
+  if (fileformat == "ply")
+  {
+    pcl::PointCloud<pcl::PointNormal>::Ptr _Pcloud(new pcl::PointCloud<pcl::PointNormal>);
+    if (pcl::io::loadPLYFile<pcl::PointNormal>(filename, *outCloud) < 0)
+    {
+      pcl::console::print_error("Error loading object/scene file!\n");
+      return false;
+    }
+    return true;
+  }
+}
 bool zyk::readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr outCloud, pcl::PointCloud<NormalType>::Ptr outNor)
 {
 	std::string fileformat;
@@ -285,3 +356,179 @@ void zyk::transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::Po
         normals_out[i].normal_z = static_cast<float> (transform (2, 0) * nt.coeffRef (0) + transform (2, 1) * nt.coeffRef (1) + transform (2, 2) * nt.coeffRef (2));
 	}
 }
+
+
+
+//
+// for mesh sampling
+//
+inline double
+uniform_deviate (int seed)
+{
+  double ran = seed * (1.0 / (RAND_MAX + 1.0));
+  return ran;
+}
+
+inline void
+randomPointTriangle (float a1, float a2, float a3, float b1, float b2, float b3, float c1, float c2, float c3,
+                     Eigen::Vector4f& p)
+{
+  float r1 = static_cast<float> (uniform_deviate (rand ()));
+  float r2 = static_cast<float> (uniform_deviate (rand ()));
+  float r1sqr = std::sqrt (r1);
+  float OneMinR1Sqr = (1 - r1sqr);
+  float OneMinR2 = (1 - r2);
+  a1 *= OneMinR1Sqr;
+  a2 *= OneMinR1Sqr;
+  a3 *= OneMinR1Sqr;
+  b1 *= OneMinR2;
+  b2 *= OneMinR2;
+  b3 *= OneMinR2;
+  c1 = r1sqr * (r2 * c1 + b1) + a1;
+  c2 = r1sqr * (r2 * c2 + b2) + a2;
+  c3 = r1sqr * (r2 * c3 + b3) + a3;
+  p[0] = c1;
+  p[1] = c2;
+  p[2] = c3;
+  p[3] = 0;
+}
+
+inline void
+randPSurface (vtkPolyData * polydata, std::vector<double> * cumulativeAreas, double totalArea, Eigen::Vector4f& p, bool calcNormal, Eigen::Vector3f& n)
+{
+  float r = static_cast<float> (uniform_deviate (rand ()) * totalArea);
+
+  std::vector<double>::iterator low = std::lower_bound (cumulativeAreas->begin (), cumulativeAreas->end (), r);
+  vtkIdType el = vtkIdType (low - cumulativeAreas->begin ());
+
+  double A[3], B[3], C[3];
+  vtkIdType npts = 0;
+  vtkIdType *ptIds = NULL;
+  polydata->GetCellPoints (el, npts, ptIds);
+  polydata->GetPoint (ptIds[0], A);
+  polydata->GetPoint (ptIds[1], B);
+  polydata->GetPoint (ptIds[2], C);
+  if (calcNormal)
+  {
+    // OBJ: Vertices are stored in a counter-clockwise order by default
+    Eigen::Vector3f v1 = Eigen::Vector3f (A[0], A[1], A[2]) - Eigen::Vector3f (C[0], C[1], C[2]);
+    Eigen::Vector3f v2 = Eigen::Vector3f (B[0], B[1], B[2]) - Eigen::Vector3f (C[0], C[1], C[2]);
+    n = v1.cross (v2);
+    n.normalize ();
+  }
+  randomPointTriangle (float (A[0]), float (A[1]), float (A[2]),
+                       float (B[0]), float (B[1]), float (B[2]),
+                       float (C[0]), float (C[1]), float (C[2]), p);
+}
+
+
+void
+uniform_sampling (vtkSmartPointer<vtkPolyData> polydata, size_t n_samples, bool calc_normal, pcl::PointCloud<pcl::PointNormal> & cloud_out)
+{
+  polydata->BuildCells ();
+  vtkSmartPointer<vtkCellArray> cells = polydata->GetPolys ();
+
+  double p1[3], p2[3], p3[3], totalArea = 0;
+  std::vector<double> cumulativeAreas (cells->GetNumberOfCells (), 0);
+  size_t i = 0;
+  vtkIdType npts = 0, *ptIds = NULL;
+  for (cells->InitTraversal (); cells->GetNextCell (npts, ptIds); i++)
+  {
+    polydata->GetPoint (ptIds[0], p1);
+    polydata->GetPoint (ptIds[1], p2);
+    polydata->GetPoint (ptIds[2], p3);
+    totalArea += vtkTriangle::TriangleArea (p1, p2, p3);
+    cumulativeAreas[i] = totalArea;
+  }
+
+  cloud_out.points.resize (n_samples);
+  cloud_out.width = static_cast<pcl::uint32_t> (n_samples);
+  cloud_out.height = 1;
+
+  for (i = 0; i < n_samples; i++)
+  {
+    Eigen::Vector4f p;
+    Eigen::Vector3f n;
+    randPSurface (polydata, &cumulativeAreas, totalArea, p, calc_normal, n);
+    cloud_out.points[i].x = p[0];
+    cloud_out.points[i].y = p[1];
+    cloud_out.points[i].z = p[2];
+    if (calc_normal)
+    {
+      cloud_out.points[i].normal_x = n[0];
+      cloud_out.points[i].normal_y = n[1];
+      cloud_out.points[i].normal_z = n[2];
+    }
+  }
+}
+
+bool zyk::mesh_sampling(std::string file_path, size_t n_samples, pcl::PointCloud<pcl::PointNormal> & cloud_out, double min_coord[3], double max_coord[3])
+{
+  vtkSmartPointer<vtkPolyData> polydata1 = vtkSmartPointer<vtkPolyData>::New ();
+  //check file extension
+  if(file_path.find(".ply")!=string::npos)
+  {
+    pcl::PolygonMesh mesh;
+    pcl::io::loadPolygonFilePLY (file_path, mesh);
+    pcl::io::mesh2vtk (mesh, polydata1);
+  }
+  else if(file_path.find(".obj")!=string::npos)
+  {
+    vtkSmartPointer<vtkOBJReader> readerQuery = vtkSmartPointer<vtkOBJReader>::New ();
+    readerQuery->SetFileName (file_path.c_str());
+    readerQuery->Update ();
+    polydata1 = readerQuery->GetOutput ();
+  }
+  else
+  {
+    return false;
+  }
+  if(min_coord!=NULL &&max_coord!=NULL){
+    double bounds[6];
+    polydata1->GetBounds(bounds);
+    min_coord[0]=bounds[0];
+    max_coord[0]=bounds[1];
+    min_coord[1]=bounds[2];
+    max_coord[1]=bounds[3];
+    min_coord[2]=bounds[4];
+    max_coord[2]=bounds[5];
+  }
+
+  //make sure that the polygons are triangles!
+  vtkSmartPointer<vtkTriangleFilter> triangleFilter = vtkSmartPointer<vtkTriangleFilter>::New ();
+#if VTK_MAJOR_VERSION < 6
+  triangleFilter->SetInput (polydata1);
+#else
+  triangleFilter->SetInputData (polydata1);
+#endif
+  triangleFilter->Update ();
+
+  vtkSmartPointer<vtkPolyDataMapper> triangleMapper = vtkSmartPointer<vtkPolyDataMapper>::New ();
+  triangleMapper->SetInputConnection (triangleFilter->GetOutputPort ());
+  triangleMapper->Update ();
+  polydata1 = triangleMapper->GetInput ();
+
+//  pcl::PointCloud<pcl::PointNormal>::Ptr cloud_1 (new pcl::PointCloud<pcl::PointNormal>);
+  uniform_sampling (polydata1, n_samples, true, cloud_out);
+
+
+  return true;
+}
+
+bool zyk::uniform_mesh_sampling(std::string file_path, float sample_ratio, pcl::PointCloud<pcl::PointNormal> & cloud_out, double min_coord[3], double max_coord[3])
+{
+  pcl::PointCloud<pcl::PointNormal>::Ptr cloud1 (new pcl::PointCloud<pcl::PointNormal>());
+  if(!zyk::mesh_sampling(file_path,50000,*cloud1,min_coord,max_coord))
+    return false;
+  double diameter = zyk::dist(min_coord,max_coord,3);
+
+  // Voxelgrid
+  VoxelGrid<PointNormal> grid_;
+  grid_.setInputCloud (cloud1);
+  double leaf_size = sample_ratio*diameter;
+  grid_.setLeafSize (leaf_size, leaf_size, leaf_size);
+
+  grid_.filter (cloud_out);
+  return true;
+}
+

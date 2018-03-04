@@ -15,7 +15,7 @@
 //#define use_eigen
 #define use_neiboringIterator
 #define vote_flag_use_map
-
+#define view_based
 namespace zyk
 {
 	struct ZYK_EXPORTS PPF
@@ -39,15 +39,18 @@ namespace zyk
 		~PPF_Space();
 	public:
 		//construct
-		bool init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int32_t angle_div, int32_t distance_div, bool ignore_plane=false);
-		//bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step,bool ignore_plane=false);
+    bool init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int angle_div, int distance_div, bool ignore_plane=false);
+#ifdef view_based
+    bool init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, std::vector<std::vector<int> >&view_based_indexes,int angle_div, int distance_div, bool ignore_plane=false);
+#endif
+    //bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step,bool ignore_plane=false);
 		void clear();
 		////////////////////
 		////// property access
 		////////////////////
 		const string getName() const { return mName; };
 		const double getMaxD() const { return max_p[3]; };
-		const double getSampleRatio() const { return model_res / (zyk::norm(model_size, 3)); };
+    const double getSampleRatio() const { return model_res / (zyk::norm(model_size, 3)); };
 	public:
 		////////////////////
 		//////methods
@@ -79,7 +82,7 @@ namespace zyk
 		float computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene, pcl::PointCloud<NormalType>::Ptr& scene_normals, float dis_thresh, float ang_thresh, zyk::pose_cluster &pose_clusters);
 		
 		////////match
-		void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, float second_dis_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& pose_clusters);
+    void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, float second_dis_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> >& pose_clusters);
 		///////USER IO
 		bool save(std::string file_name);
 		bool load(std::string fine_name);
@@ -96,8 +99,8 @@ namespace zyk
 		bool ignore_plane_switch;
 
 		//////// ICP test version
-		void ICP_Refine(pcl::PointCloud<PointType>::Ptr scene, const vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &coarse_pose_clusters, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters_out, int max_number, double scene_res=-1.0, double max_dis=-1.0);
-		void ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &coarse_pose_clusters, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters_out, int max_number, double scene_res = -1.0, double max_dis = -1.0);
+    void ICP_Refine(pcl::PointCloud<PointType>::Ptr scene, const vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &coarse_pose_clusters, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &pose_clusters_out, int max_number, double scene_res=-1.0, double max_dis=-1.0);
+    void ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &coarse_pose_clusters, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &pose_clusters_out, int max_number, double scene_res = -1.0, double max_dis = -1.0);
 
 	protected:
 		///////////////IO
@@ -108,18 +111,24 @@ namespace zyk
 		BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 		/////////////METHODS
-		void recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters);
+    void recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &pose_clusters);
 		bool computeAllPPF();
+#ifdef view_based
+    bool computeALL_Visible_PPF(std::vector<std::vector<int> >&view_based_indexes);
+#endif
 		bool findBoundingBox();
-		bool constructGrid();
+    bool constructGrid(int angle_div,int distance_div);
 	protected:
 		////////////////////
 		//////basic property
 		////////////////////
 		std::string mName;
+    int ver_;
 		//for fast scene point access
 		//CVoxel_grid scene_grid;
-
+#ifdef view_based
+    std::vector<float> occlusion_weights;
+#endif
 		//ptr to data
 		pcl::PointCloud<PointType>::Ptr input_point_cloud;
 		pcl::PointCloud<PointType>::Ptr centered_point_cloud;
@@ -158,22 +167,10 @@ namespace zyk
 template<class Archive>
 void zyk::PPF_Space::save(Archive& ar, const unsigned int version)
 {
+  ar & ver_;
 	ar & mName;
-	ar & grid_f1_div;
-	ar & grid_f2_div;
-	ar & grid_f3_div;
-	ar & grid_f4_div;
-	ar & min_p(0);
-	ar & min_p(1);
-	ar & min_p(2);
-	ar & min_p(3);
-	ar & max_p(0);
-	ar & max_p(1);
-	ar & max_p(2);
-	ar & max_p(3);
-	ar & model_size[0];
-	ar & model_size[1];
-	ar & model_size[2];
+  ar & grid_f1_div;
+  ar & grid_f4_div;
 	ar & model_res;
 	int ppf_vector_size=ppf_vector.size();
 	ar & ppf_vector_size;
@@ -198,29 +195,21 @@ void zyk::PPF_Space::save(Archive& ar, const unsigned int version)
 		ar & input_point_normal->at(i).normal_x;
 		ar & input_point_normal->at(i).normal_y;
 		ar & input_point_normal->at(i).normal_z;
+    if(ver_==2){
+        ar & occlusion_weights[i];
+    }
 	}
+
 }
 
 template<class Archive>
 void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 {
 	int32_t ppf_vector_size = 0;
+  ar & ver_;
 	ar & mName;
-	ar & grid_f1_div;
-	ar & grid_f2_div;
-	ar & grid_f3_div;
-	ar & grid_f4_div;
-	ar & min_p(0);
-	ar & min_p(1);
-	ar & min_p(2);
-	ar & min_p(3);
-	ar & max_p(0);
-	ar & max_p(1);
-	ar & max_p(2);
-	ar & max_p(3);
-	ar & model_size[0];
-	ar & model_size[1];
-	ar & model_size[2];
+  ar & grid_f1_div;
+  ar & grid_f4_div;
 	ar & model_res;
 	ar & ppf_vector_size;
 	ppf_vector.resize(ppf_vector_size);
@@ -243,6 +232,7 @@ void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 	{
 		PointType _tem;
 		NormalType _nor;
+
 		ar & _tem.x;
 		ar & _tem.y;
 		ar & _tem.z;
@@ -251,51 +241,12 @@ void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 		ar & _nor.normal_z;
 		input_point_cloud->push_back(_tem);
 		input_point_normal->push_back(_nor);
+    if(ver_==2){
+        float weight;
+        ar & weight;
+        occlusion_weights.push_back(weight);
+    }
 	}
 
-	float minx, miny, minz, maxx, maxy, maxz;
-	for (size_t i = 0; i < input_point_cloud->size(); ++i) {
-		if (i == 0) {
-			maxx = minx = input_point_cloud->at(i).x;
-			maxy = miny = input_point_cloud->at(i).y;
-			maxz = minz = input_point_cloud->at(i).z;
-		}
-		else {
-			maxx = std::max(maxx, input_point_cloud->at(i).x); minx = std::min(minx, input_point_cloud->at(i).x);
-			maxy = std::max(maxy, input_point_cloud->at(i).y); miny = std::min(miny, input_point_cloud->at(i).y);
-			maxz = std::max(maxz, input_point_cloud->at(i).z); minz = std::min(minz, input_point_cloud->at(i).z);
-		}
-	}
-	cx = (minx + maxx) / 2;
-	cy = (miny + maxy) / 2;
-	cz = (minz + maxz) / 2;
-	centered_point_cloud->clear();
-	for (size_t i = 0; i < input_point_cloud->size(); ++i) {
-		PointType _tem;
-		_tem.x = input_point_cloud->at(i).x - cx;
-		_tem.y = input_point_cloud->at(i).y - cy;
-		_tem.z = input_point_cloud->at(i).z - cz;
-		centered_point_cloud->push_back(_tem);
-	}
-
-	grid_div_mul(0) = 1;
-	grid_div_mul(1) = grid_div_mul(0)*grid_f1_div;
-	grid_div_mul(2) = grid_div_mul(1)*grid_f2_div;
-	grid_div_mul(3) = grid_div_mul(2)*grid_f3_div;
-	total_box_num = grid_div_mul(3)*grid_f4_div;
-	assert(total_box_num > 0);
-
-	leaf_size(0) = M_PI/ grid_f1_div;
-	leaf_size(1) = M_PI / grid_f2_div;
-	leaf_size(2) = M_PI / grid_f3_div;
-	leaf_size(3) = 1.1*max_p(3) / grid_f4_div;
-
-	inv_leaf_size(0) = 1 / leaf_size(0);
-	inv_leaf_size(1) = 1 / leaf_size(1);
-	inv_leaf_size(2) = 1 / leaf_size(2);
-	inv_leaf_size(3) = 1 / leaf_size(3);
-
-	//grid
-	ppf_box_vector.resize(total_box_num);
-	constructGrid();
+  constructGrid(grid_f1_div,grid_f4_div);
 }

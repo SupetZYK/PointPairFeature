@@ -34,8 +34,8 @@ float ang_thresh (1);
 float model_ds_ (0.05f);
 float plane_ds_ (0.05f);
 float curvature_radius_ (2.0f);
-int angle_div_ (15);
-int distance_div_ (20);
+int angle_div_ (20);
+int distance_div_ (25);
 void showHelp(char *filename)
 {
 	std::cout << std::endl;
@@ -44,12 +44,14 @@ void showHelp(char *filename)
 	std::cout << "*             Correspondence Grouping Tutorial - Usage Guide              *" << std::endl;
 	std::cout << "*                                                                         *" << std::endl;
 	std::cout << "***************************************************************************" << std::endl << std::endl;
-	std::cout << "Usage: " << filename << " model_filename.pcd scene_filename.pcd [Options]" << std::endl << std::endl;
+  std::cout << "Usage: "  << " ppf_train [Options]" << std::endl << std::endl;
 	std::cout << "Options:" << std::endl;
 	std::cout << "     -h:						Show this help." << std::endl;
-	//std::cout << "     -r:						Compute the model cloud resolution and multiply" << std::endl;
+  std::cout << "     --mod val:			Path of the model cloud." << std::endl;
+  std::cout << "     --out val:			Path of the output .ppfs file(if not specified, same as model)" << std::endl;
+  //std::cout << "     -r:					Compute the model cloud resolution and multiply" << std::endl;
 	std::cout << "     -w:						write the sampled model" << std::endl;
-	//std::cout << "     --ply:					Use .poly as input cloud. Default is .pcd" << std::endl;
+  //std::cout << "     --ply:				Use .poly as input cloud. Default is .pcd" << std::endl;
 	std::cout << "     --rn:					Reorient switch!" << std::endl;
 	std::cout << "     --cc:					Change Center switch!" << std::endl;
 	std::cout << "     --so:					show original model" << std::endl;
@@ -59,8 +61,8 @@ void showHelp(char *filename)
 	std::cout << "     --model_ds val:			Model down sampling radtia (default 0.05)" << std::endl;
 	std::cout << "     --plane_ds val:			Model plane feature down sampling ratia, if not set, default same as model" << std::endl;
 	std::cout << "     --curv_r val:			curvature radius" << std::endl;
-	std::cout << "     --a_div val:				angle division" << std::endl;
-	std::cout << "     --d_div val:				distance division" << std::endl;
+  std::cout << "     --a_div val:				angle division" << std::endl;
+  std::cout << "     --d_div val:				distance division" << std::endl;
 
 }
 
@@ -106,21 +108,20 @@ void parseCommandLine(int argc, char *argv[])
 	{
 		change_center_switch_ = true;
 	}
-	//Model & scene filenames
-	std::vector<int> filenames;
-	filenames = pcl::console::parse_file_extension_argument(argc, argv, ".pcd");
-	if(filenames.size()<1)
-		filenames = pcl::console::parse_file_extension_argument(argc, argv, ".ply");
-	if (filenames.size() < 1)
-	{
-		std::cout << "Filenames missing.\n";
-		showHelp(argv[0]);
-		exit(-1);
-	}
-	model_filename_ = argv[filenames[0]];
-	int pos = model_filename_.find_last_of('.');
-	save_filename_ = model_filename_.substr(0, pos);
-	save_filename_ += ".ppfs";
+  //Model filename
+  pcl::console::parse_argument(argc, argv, "--mod", model_filename_);
+  pcl::console::parse_argument(argc, argv, "--out", save_filename_);
+  if(save_filename_.empty()){
+    int pos = model_filename_.find_last_of('.');
+    save_filename_ = model_filename_.substr(0, pos);
+    save_filename_ += ".ppfs";
+  }
+  else{
+    if(save_filename_.find(".ppfs")==std::string::npos){
+      pcl::console::print_error("invalid output file name, must be *.ppfs!");
+      exit(-1);
+    }
+  }
 	//General parameters
 	pcl::console::parse_argument(argc, argv, "--model_ds", model_ds_);
 	plane_ds_ = model_ds_;
@@ -160,7 +161,6 @@ main(int argc, char *argv[])
 	//
 	if (show_original_model_)
 	{
-
 		pcl::visualization::PCLVisualizer key_visual("Original Viewr");
 		key_visual.addCoordinateSystem(20);
 		if (use_existing_normal_data_)
@@ -231,7 +231,7 @@ main(int argc, char *argv[])
 			//}
 		}
 
-		cout << "Normal compute complete£¡" << endl;
+    cout << "Normal compute complete" << endl;
 	}
 	else
 	{
@@ -336,11 +336,6 @@ main(int argc, char *argv[])
 		std::cout << "zero total points: " << pnts_zero->size() << "; Selected downsample: " << model_zero_curvature_keypoints->size() << std::endl;
 
 
-		if (save_sampled_cloud_)
-		{
-			pcl::io::savePLYFile(model_filename_ + "_changed", *model);
-		}
-
 		//
 		// combine key pnts and key normals
 		//
@@ -356,6 +351,15 @@ main(int argc, char *argv[])
 		std::cout << "Model total points: " << model->size() << std::endl;
 		std::cout <<" Selected downsample: " << keypoints->size() << std::endl;	
 	}
+
+  if (save_sampled_cloud_)
+  {
+    pcl::PointCloud<pcl::PointNormal>::Ptr model_with_normals(new pcl::PointCloud<pcl::PointNormal>);
+    pcl::copyPointCloud(*model,*model_with_normals);
+    pcl::copyPointCloud(*model_normals,*model_with_normals);
+    pcl::io::savePLYFile(model_filename_ + "_changed", *model_with_normals);
+    std::cout<<"save sample changed!"<<std::endl;
+  }
 
 	//
 	//visualize keypoints
@@ -400,9 +404,9 @@ main(int argc, char *argv[])
 	zyk::PPF_Space model_feature_space;
 	cout << "trained using angle_div , distance_div: " << angle_div_ << ", " << distance_div_ << endl;
 	model_feature_space.init(objName, keypoints, keyNormals, angle_div_ , distance_div_,true);
-	model_feature_space.model_size[0]=model_size[0];
-	model_feature_space.model_size[1]=model_size[1];
-	model_feature_space.model_size[2]=model_size[2];
+//	model_feature_space.model_size[0]=model_size[0];
+//	model_feature_space.model_size[1]=model_size[1];
+//	model_feature_space.model_size[2]=model_size[2];
 	model_feature_space.model_res = model_ss_;
 	cout << "Calculated model max distance is " << model_feature_space.getMaxD() << endl;
 	//

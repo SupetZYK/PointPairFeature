@@ -1,9 +1,34 @@
 #pragma once
 #include <precomp.h>
+#include <math.h>
 namespace zyk{
-	ZYK_EXPORTS double dot(const float* n1, const float* n2, const int dim);
-	ZYK_EXPORTS double norm(const float* n, const int dim);
-	ZYK_EXPORTS double dist(const float* n1, const float* n2, const int dim);
+template<typename T>
+T dot(const T* n1, const T* n2, const int dim)
+{
+  T res = 0;
+  for (int i = 0; i < dim; ++i)
+    res += n1[i] * n2[i];
+  return res;
+}
+template<typename T>
+T norm(const T* n, const int dim)
+{
+  T res = 0;
+  for (int i = 0; i < dim; ++i)
+    res += n[i] * n[i];
+  return sqrt(res);
+}
+template<typename T>
+T dist(const T* n1, const T* n2, const int dim)
+{
+  T res = 0;
+  for (int i = 0; i < dim; ++i)
+  {
+    T tmp = n1[i]- n2[i];
+    res += tmp*tmp;
+  }
+  return sqrt(res);
+}
 }
 
 #ifndef WIN32

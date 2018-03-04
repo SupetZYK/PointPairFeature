@@ -35,9 +35,10 @@ namespace pcl
         max_b_ (Eigen::Vector4i::Zero ()),
         div_b_ (Eigen::Vector4i::Zero ()),
         divb_mul_ (Eigen::Vector4i::Zero ()),
-        search_radius_ (0)
+        search_radius_ (0),
+        selected_indices_ (new std::vector<int>())
       {
-		selected_indices_.clear();
+        selected_indices_->clear();
         filter_name_ = "SmartSampling";
       }
 
@@ -62,7 +63,9 @@ namespace pcl
         search_radius_ = radius;
 			};
 
-	  std::vector<size_t>& getSelectedIndex(){ return selected_indices_; };
+    IndicesPtr getSelectedIndex(){
+      return selected_indices_;
+    };
 
 	  /** \brief Set the normals computed on the input point cloud
 	  * \param[in] normals the normals computed for the input cloud
@@ -93,7 +96,7 @@ namespace pcl
 		void push_back(size_t index){ index_vector.push_back(index); };
       };
 
-	  std::vector<size_t> selected_indices_;
+    IndicesPtr selected_indices_;
 	  /** \brief in degrees */
 	  float angle_thresh = 1;
 
@@ -221,7 +224,7 @@ namespace pcl
 			if (res){
 				leaf.push_back((*indices_)[cp]);
 				output.points.push_back(input_->points[(*indices_)[cp]]);
-				selected_indices_.push_back((*indices_)[cp]);
+        selected_indices_->push_back((*indices_)[cp]);
 				count++;
 			}
 		}

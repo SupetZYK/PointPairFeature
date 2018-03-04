@@ -122,14 +122,14 @@ main(int argc, char *argv[])
 	pcl::PointCloud<NormalType>::Ptr compute_keyNormals(new pcl::PointCloud<NormalType>());
 	if (use_existing_normal_data_)
 	{
-		if (!readPointCloud(model_filename_, "ply", scene, scene_normals))
+    if (!zyk::readPointCloud(model_filename_, scene, scene_normals))
 		{
 			return(-1);
 		}
 	}
 	else
 	{
-		if (!readPointCloud(model_filename_, "ply", scene))
+    if (!zyk::readPointCloud(model_filename_, scene))
 		{
 			return(-1);
 		}
@@ -137,7 +137,7 @@ main(int argc, char *argv[])
 	cout<<"Read finish"<<endl;
 	double max_coord[3];
 	double min_coord[3];
-	float resolution = static_cast<float> (computeCloudResolution(scene,max_coord, min_coord));
+  float resolution = static_cast<float> (zyk::computeCloudResolution(scene,max_coord, min_coord));
 	cout<<"Scene resolution : "<<resolution<<endl;
 	if (use_cloud_resolution_)
 	{
@@ -162,9 +162,9 @@ main(int argc, char *argv[])
 	}
 	else {
 		if (scene_normals->empty())
-			sampled_index_ptr = uniformDownSamplePoint(scene, scene_ss_, scene_keypoints);
+      sampled_index_ptr = zyk::uniformDownSamplePoint(scene, scene_ss_, scene_keypoints);
 		else
-			sampled_index_ptr = uniformDownSamplePointAndNormal(scene, scene_normals, scene_ss_, scene_keypoints, scene_keyNormals);
+      sampled_index_ptr = zyk::uniformDownSamplePointAndNormal(scene, scene_normals, scene_ss_, scene_keypoints, scene_keyNormals);
 
 		//sampled_index_ptr=uniformDownSamplePointAndNormal(scene, scene_normals, scene_ss_, scene_keypoints, scene_keyNormals);
 		std::cout << "Scene total points: " << scene->size() << "; Selected downsample: " << scene_keypoints->size() << std::endl;
