@@ -188,7 +188,8 @@ main(int argc, char *argv[])
 
 
 	double d_max = sqrt(model_length*model_length + model_width*model_width + model_height*model_height);
-	double model_ss_ = model_ds_*d_max;
+  double model_ss_ = model_ds_*d_max;
+  //double model_ss_ = 0.05*d_max;
 	std::cout << "Model resolution:       " << resolution << std::endl;
 	std::cout << "Model sampling distance step:    " << model_ss_ << std::endl;
 	
@@ -347,10 +348,20 @@ main(int argc, char *argv[])
 		}
 	}
 	else {
-		zyk::uniformDownSamplePointAndNormal(model, model_normals, model_ss_, keypoints, keyNormals);
-		std::cout << "Model total points: " << model->size() << std::endl;
-		std::cout <<" Selected downsample: " << keypoints->size() << std::endl;	
+    if(smart_sample_border_)
+    {
+      std::cout<<"Use smart sampling, angle thresh(deg): "<<ang_thresh<<std::endl;
+      zyk::SmartDownSamplePointAndNormal(model, model_normals,ang_thresh,model_ss_,keypoints, keyNormals);
+    }
+    else
+    {
+      std::cout<<"Use uniform sampling"<<std::endl;
+      zyk::uniformDownSamplePointAndNormal(model, model_normals, model_ss_, keypoints, keyNormals);
+    }
+
 	}
+  std::cout << "Model total points: " << model->size() << std::endl;
+  std::cout <<" Selected downsample: " << keypoints->size() << std::endl;
 
   if (save_sampled_cloud_)
   {
@@ -407,7 +418,8 @@ main(int argc, char *argv[])
 //	model_feature_space.model_size[0]=model_size[0];
 //	model_feature_space.model_size[1]=model_size[1];
 //	model_feature_space.model_size[2]=model_size[2];
-	model_feature_space.model_res = model_ss_;
+  model_feature_space.model_res = model_ss_;
+//  model_feature_space.model_res = 0.05*d_max;
 	cout << "Calculated model max distance is " << model_feature_space.getMaxD() << endl;
 	//
 	// compute no empty ppf box nunber

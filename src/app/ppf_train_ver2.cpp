@@ -24,7 +24,7 @@ bool use_existing_normal_data_  (false);
 //bool x_centrosymmetric_  (false);
 //bool y_centrosymmetric_  (false);
 //bool z_centrosymmetric_  (false);
-//bool save_sampled_cloud_ (false);
+bool save_sampled_cloud_ (false);
 bool normal_reorient_switch_ (false);
 bool smart_sample_border_ (false);
 bool show_original_model_ (false);
@@ -84,6 +84,10 @@ void parseCommandLine(int argc, char *argv[])
 //	{
 //		save_sampled_cloud_ = true;
 //	}
+  if (pcl::console::find_switch(argc, argv, "-w"))
+  {
+    save_sampled_cloud_ = true;
+  }
 	if (pcl::console::find_switch(argc, argv, "--rn"))
 	{
 		normal_reorient_switch_ = true;
@@ -147,7 +151,7 @@ main(int argc, char *argv[])
   pcl::PointCloud<pcl::PointNormal>::Ptr keypoints(new pcl::PointCloud<pcl::PointNormal>());
 
   double min_coord[3],max_coord[3];
-  if(!zyk::mesh_sampling(model_filename_,30000,*model,min_coord,max_coord)){
+  if(!zyk::mesh_sampling(model_filename_,300000,*model,min_coord,max_coord)){
     PCL_ERROR("Samping mesh fail!");
     return -1;
   }
@@ -199,6 +203,12 @@ main(int argc, char *argv[])
   std::cout << "Model total points: " << model->size() << std::endl;
   std::cout <<" Selected downsample: " << keypoints->size() << std::endl;
 
+  if (save_sampled_cloud_)
+  {
+    pcl::io::savePLYFile(model_filename_ + "_changed", *keypoints);
+    std::cout<<"save sample changed!"<<std::endl;
+  }
+
   pcl::PointCloud<PointType>::Ptr input_points (new pcl::PointCloud<PointType>());
   pcl::PointCloud<NormalType>::Ptr input_normals (new pcl::PointCloud<NormalType>());
   pcl::copyPointCloud(*keypoints,*input_points);
@@ -211,7 +221,7 @@ main(int argc, char *argv[])
 	pcl::visualization::PCLVisualizer key_visual("Key point Viewr");
 	key_visual.addCoordinateSystem(20);
   key_visual.addPointCloud(keypoints, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(keypoints, 0.0, 0.0, 255.0), "keypoints");
-  key_visual.addPointCloudNormals<pcl::PointNormal, pcl::PointNormal>(keypoints, keypoints, 1, 10, "keynormals");
+  //key_visual.addPointCloudNormals<pcl::PointNormal, pcl::PointNormal>(keypoints, keypoints, 1, 10, "keynormals");
 	key_visual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4, "keypoints");
 	key_visual.spin();
 

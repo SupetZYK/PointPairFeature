@@ -26,7 +26,8 @@ namespace zyk
 		void checkDisAndRemove(int index,float thresh);
 
 		std::vector < Eigen::Affine3f, Eigen::aligned_allocator<Eigen::Affine3f> > transformations;
-		std::vector < int> voteLists;
+    //2018-3-8 big bug fix by zyk change vector<int> to vector<float>
+    std::vector <float> voteLists;
 		float vote_count;
 		float old_vote_count;
 	};

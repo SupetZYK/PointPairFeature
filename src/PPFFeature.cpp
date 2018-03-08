@@ -582,24 +582,26 @@ bool PPF_Space::computeALL_Visible_PPF(std::vector<std::vector<int> > &view_base
   float inc=1.0/view_based_indexes.size();
   for(int i=0;i<view_based_indexes.size();++i){
     for(int j=0;j<view_based_indexes[i].size();++j){
-      occlusion_weights[j]+=inc;
+      int cur_ref_idx=view_based_indexes[i][j];
+      occlusion_weights[cur_ref_idx]+=inc;
       for(int k=0;k<view_based_indexes[i].size();++k){
-        if(k==j)continue;
-        if(pair_set.find(std::pair<int,int>(j,k))!=pair_set.end())
+        int scd_idx=view_based_indexes[i][k];
+        if(cur_ref_idx==scd_idx)continue;
+        if(pair_set.find(std::pair<int,int>(cur_ref_idx,scd_idx))!=pair_set.end())
         {
           continue;
         }
         else
         {
-          pair_set.insert(std::pair<int,int>(j,k));
+          pair_set.insert(std::pair<int,int>(cur_ref_idx,scd_idx));
           PPF ppf;
-          computeSinglePPF(input_point_cloud, input_point_normal, j, k, ppf);
+          computeSinglePPF(input_point_cloud, input_point_normal, cur_ref_idx, scd_idx, ppf);
           if (ignore_plane_switch)
           {
             if (abs(ppf.ppf.f3) < 0.01 && abs(ppf.ppf.f1-M_PI_2)<0.01&&abs(ppf.ppf.f2-M_PI_2)<0.01)
               continue;
           }
-          ppf.ppf.alpha_m = computeAlpha(input_point_cloud->at(j).getVector3fMap(), input_point_normal->at(j).getNormalVector3fMap(), input_point_cloud->at(k).getVector3fMap());
+          ppf.ppf.alpha_m = computeAlpha(input_point_cloud->at(cur_ref_idx).getVector3fMap(), input_point_normal->at(cur_ref_idx).getNormalVector3fMap(), input_point_cloud->at(scd_idx).getVector3fMap());
           if (!pcl_isfinite(ppf.ppf.alpha_m))
             continue;
           ppf_vector.push_back(ppf);

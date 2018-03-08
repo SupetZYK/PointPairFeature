@@ -346,8 +346,10 @@ main(int argc, char *argv[])
 	cout << ">recompute score angle thresh: " << recopute_score_ang_thresh << endl;
 	cout << "second distance thresh: " << second_distance_thresh << endl;
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
+  int start_time=clock();
 	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, two_ball_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, second_distance_thresh, num_clusters_per_group, pose_clusters);
-	
+  int end_time=clock();
+  std::cout<<"Time used: "<<(end_time-start_time)/1000.0<<"(s)"<<std::endl;
 	if(num_clusters_per_group<0)
 	{
 		//gather some information for paper, 
@@ -356,14 +358,20 @@ main(int argc, char *argv[])
 		vector<int> incorrect_pose(100,0);
 		float correct_vote=0.0, incorrect_vote=0.0;
 		for (int i = 0; i < pose_clusters.size(); ++i) {
-			int vote = pose_clusters[i].old_vote_count;
 			if (pose_clusters[i].vote_count > show_vote_thresh) {
-				correct_pose[vote]+=pose_clusters[i].size();
+
+        for(int j=0;j<pose_clusters[i].size();++j){
+          int vote = pose_clusters[i].voteLists[j];
+          correct_pose[vote]+=1;
+        }
 				correct_vote += pose_clusters[i].old_vote_count;
 			}
 			else
 			{
-				incorrect_pose[vote]+=pose_clusters[i].size();
+        for(int j=0;j<pose_clusters[i].size();++j){
+          int vote = pose_clusters[i].voteLists[j];
+          incorrect_pose[vote]+=1;
+        }
 				incorrect_vote += pose_clusters[i].old_vote_count;
 			}
 		}
