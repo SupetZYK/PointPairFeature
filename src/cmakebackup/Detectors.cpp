@@ -71,13 +71,13 @@ bool CDetectModel3D::readSurfaceModel(string filePath)
 //	return true;
 //}
 
-bool CDetectModel3D::createSurfaceModel(string filePath, string savePath, string objName)
+int CDetectModel3D::createSurfaceModel(string filePath, string savePath, string objName)
 {
   pcl::PointCloud<pcl::PointNormal>::Ptr model(new pcl::PointCloud<pcl::PointNormal>());
   pcl::PointCloud<pcl::PointNormal>::Ptr keypoints(new pcl::PointCloud<pcl::PointNormal>());
   double min_coord[3],max_coord[3];
   if(!zyk::mesh_sampling(filePath,30000,*model,min_coord,max_coord)){
-    PCL_ERROR("Samping mesh fail!");
+    PCL_ERROR("Samping mesh fail!Must be OBJ format!");
     return -1;
   }
   double model_length = max_coord[0] - min_coord[0];
@@ -86,8 +86,9 @@ bool CDetectModel3D::createSurfaceModel(string filePath, string savePath, string
   double d_max = sqrt(model_length*model_length + model_width*model_width + model_height*model_height);
   double model_ss_ = mTrainOptions.downSampleRatio*d_max;
 
-  zyk::SmartDownSamplePointAndNormal(model,30,model_ss_,keypoints);
-
+  //zyk::SmartDownSamplePointAndNormal(model,30,model_ss_,keypoints);
+  zyk::uniformDownSamplePointAndNormal(model, model_ss_, keypoints);
+  std::cout << "Key points size: " << keypoints->size() << std::endl;
   pcl::PointCloud<PointType>::Ptr input_points (new pcl::PointCloud<PointType>());
   pcl::PointCloud<NormalType>::Ptr input_normals (new pcl::PointCloud<NormalType>());
   pcl::copyPointCloud(*keypoints,*input_points);
@@ -116,13 +117,15 @@ bool CDetectModel3D::createSurfaceModel(string filePath, string savePath, string
     p_PPF = NULL;
   }
   p_PPF = new(zyk::PPF_Space);
-  p_PPF->init(objName, input_points, input_normals, 20, 20, true);
+  if (!p_PPF->init(objName, input_points, input_normals, 20, 20, true))
+	  return -2;
 
   p_PPF->model_res = model_ss_;
 
-  p_PPF->save(save_filename_);
+  if (!p_PPF->save(save_filename_))
+	  return -3;
 
-	return true;
+	return 1;
 }
 
 void CDetectModel3D::clearSurModel()

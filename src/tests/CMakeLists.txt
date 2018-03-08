@@ -13,6 +13,9 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 add_executable(test_Detectors  test_Detectors.cpp)
 target_link_libraries(test_Detectors zyk_ppf)
 
+add_executable(test_Detector_train  test_Detector_train.cpp)
+target_link_libraries(test_Detector_train zyk_ppf)
+
 add_executable(test_neiboriterator test_neiborIterator.cpp)
 target_link_libraries(test_neiboriterator zyk_ppf)
 

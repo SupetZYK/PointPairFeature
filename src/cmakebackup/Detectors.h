@@ -94,7 +94,7 @@ public:
 	*@ savePath, path of the surface model to be created 
 	*@ objName, name of the surface model to be created
 	*/
-	bool createSurfaceModel(string filePath, string savePath="", string objName="");
+	int createSurfaceModel(string filePath, string savePath="", string objName="");
 	/** clear the surface model
 	*/
 	void clearSurModel();

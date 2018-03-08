@@ -3,11 +3,11 @@
 #include <time.h>
 #include "Detectors.h"
 using namespace std;
-//std::string surface_model_file = "../../../datafile/pipe.ppfs";
-////std::string scene_file = "../../../datafile/pipe_scene.ply";
-//std::string scene_file = "../../../datafile/pipes/5.ply";
+//std::string surface_model_file = "../../../datafile/pipe_d.ppfs";
+//std::string scene_file = "../../../datafile/pipe_scene.ply";
+////std::string scene_file = "../../../datafile/pipes/5.ply";
 
-std::string surface_model_file = "../../../datafile/cplat_s.ppfs";
+std::string surface_model_file = "../../../datafile/plat_d.ppfs";
 std::string scene_file = "../../../datafile/plat_scene.ply";
 //std::string scene_file = "../../../datafile/plats/1.txt";
 
@@ -24,7 +24,7 @@ int main(int argc, char**argv) {
 	CDetectors3D detectors;
 	//set detect parameters
 	CDetectModel3D::detectOptions opt;
-	opt.downSampleRatio = 0.08;
+	opt.downSampleRatio = 0.06;
 	opt.maxNumber = 20;
 	opt.MaxOverlapDistRel = 0.5;
 	opt.minScore = 0.4;

@@ -49,13 +49,13 @@ bool PPF_Space::init(string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pc
   if (!constructGrid(angle_div,distance_div))
     return false;
   ///// INFO
-  cout << "During training, total ppf box number is: " << total_box_num << endl;
-  zyk::PPF ppf;
-  ppf.ppf.f1 = max_p(0);
-  ppf.ppf.f2 = max_p(1);
-  ppf.ppf.f3 = max_p(2);
-  ppf.ppf.f4 = max_p(3);
-  cout << "The max_p's index is: " << getppfBoxIndex(ppf) << endl;
+  //cout << "During training, total ppf box number is: " << total_box_num << endl;
+  //zyk::PPF ppf;
+  //ppf.ppf.f1 = max_p(0);
+  //ppf.ppf.f2 = max_p(1);
+  //ppf.ppf.f3 = max_p(2);
+  //ppf.ppf.f4 = max_p(3);
+  //cout << "The max_p's index is: " << getppfBoxIndex(ppf) << endl;
   return true;
 
 }
@@ -106,27 +106,27 @@ bool PPF_Space::init(string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pc
 bool zyk::PPF_Space::init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int angle_div, int distance_div, bool ignore_plane)
 {
 	mName = Name;
-  ver_ = 1;
+	ver_ = 1;
 	input_point_cloud = pointcloud;
 	input_point_normal = pointNormal;
 	//div
-  assert(angle_div > 0 && distance_div > 0);
+	assert(angle_div > 0 && distance_div > 0);
 	//switch
 	ignore_plane_switch = ignore_plane;
 	//ppf
 	if (!computeAllPPF())
 		return false;
 
-  if (!constructGrid(angle_div,distance_div))
+	if (!constructGrid(angle_div,distance_div))
 		return false;
 	///// INFO
-	cout << "During training, total ppf box number is: " << total_box_num << endl;
-	zyk::PPF ppf;
-	ppf.ppf.f1 = max_p(0);
-	ppf.ppf.f2 = max_p(1);
-	ppf.ppf.f3 = max_p(2);
-	ppf.ppf.f4 = max_p(3);
-	cout << "The max_p's index is: " << getppfBoxIndex(ppf) << endl;
+	//cout << "During training, total ppf box number is: " << total_box_num << endl;
+	//zyk::PPF ppf;
+	//ppf.ppf.f1 = max_p(0);
+	//ppf.ppf.f2 = max_p(1);
+	//ppf.ppf.f3 = max_p(2);
+	//ppf.ppf.f4 = max_p(3);
+	//cout << "The max_p's index is: " << getppfBoxIndex(ppf) << endl;
 	return true;
 }
 
@@ -157,8 +157,8 @@ bool zyk::PPF_Space::findBoundingBox()
 		min_p = min_p.min(Eigen::Array4f(p.f1, p.f2, p.f3, p.f4));
 		max_p = max_p.max(Eigen::Array4f(p.f1, p.f2, p.f3, p.f4));
 	}
-	cout << "ppf min_p: " << min_p << endl;
-	cout << "ppf max_p: " << max_p << endl;
+	//cout << "ppf min_p: " << min_p << endl;
+	//cout << "ppf max_p: " << max_p << endl;
 	return true;
 }
 
@@ -431,7 +431,7 @@ void zyk::PPF_Space::ICP_Refine(pcl::PointCloud<PointType>::Ptr scene, const vec
 			scene_res = computeCloudResolution(scene);
 		}
 		max_dis = scene_res*1.414 + 0.05;
-		std::cout << "ICP max distance computed: " << max_dis << std::endl;
+		//std::cout << "ICP max distance computed: " << max_dis << std::endl;
 	}
 	pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
 	pcl::PointCloud<PointType>::Ptr icp_res(new pcl::PointCloud<PointType>());
@@ -477,7 +477,7 @@ void zyk::PPF_Space::ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const 
 		scene_res = computeCloudResolution(scene);
 	}
 	float final_dis = scene_res*1.414 + 0.05;
-	std::cout << "ICP max distance computed: " << final_dis << std::endl;
+	//std::cout << "ICP max distance computed: " << final_dis << std::endl;
 	if (max_dis < 0) {
 		max_dis = 4 * max_dis;
 	}
@@ -515,17 +515,17 @@ void zyk::PPF_Space::ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const 
 
 bool zyk::PPF_Space::computeAllPPF()
 {
-  //Mofified 2018-3-3 by zyk, no need to use centered_point_cloud to compute all ppf, input_point_cloud is same
+	 //Mofified 2018-3-3 by zyk, no need to use centered_point_cloud to compute all ppf, input_point_cloud is same
 	//check
-  if (input_point_cloud == NULL || input_point_normal == NULL)
+	if (input_point_cloud == NULL || input_point_normal == NULL)
 		return false;
-  if (input_point_cloud->empty() || input_point_normal->empty())
+	if (input_point_cloud->empty() || input_point_normal->empty())
 		return false;
-  if (input_point_cloud->size() != input_point_normal->size())
+	if (input_point_cloud->size() != input_point_normal->size())
 		return false;
 
 	//loop
-  for (int i = 0; i < input_point_cloud->size(); i++)
+	 for (int i = 0; i < input_point_cloud->size(); i++)
 	{
 		/*if (model_x_centrosymmetric)
 		{
@@ -542,18 +542,18 @@ bool zyk::PPF_Space::computeAllPPF()
 			if (centered_point_cloud->at(i).y > point_cloud_center(1))
 				continue;
 		}*/
-    for (int j = 0; j < input_point_cloud->size(); j++)
+		 for (int j = 0; j < input_point_cloud->size(); j++)
 		{
 			if (i != j)
 			{
 				PPF ppf;
-        computeSinglePPF(input_point_cloud, input_point_normal, i, j, ppf);
+				computeSinglePPF(input_point_cloud, input_point_normal, i, j, ppf);
 				if (ignore_plane_switch)
 				{
 					if (abs(ppf.ppf.f3) < 0.01 && abs(ppf.ppf.f1-M_PI_2)<0.01&&abs(ppf.ppf.f2-M_PI_2)<0.01)
 						continue;
 				}
-        ppf.ppf.alpha_m = computeAlpha(input_point_cloud->at(i).getVector3fMap(), input_point_normal->at(i).getNormalVector3fMap(), input_point_cloud->at(j).getVector3fMap());
+				ppf.ppf.alpha_m = computeAlpha(input_point_cloud->at(i).getVector3fMap(), input_point_normal->at(i).getNormalVector3fMap(), input_point_cloud->at(j).getVector3fMap());
 				if (!pcl_isfinite(ppf.ppf.alpha_m))
 					continue;
 				ppf_vector.push_back(ppf);
@@ -845,7 +845,7 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 	float box_radius = sqrt(model_size[0] * model_size[0] + model_size[1] * model_size[1] + model_size[2] * model_size[2]);
 	first_dis_thresh *= box_radius;
 	second_dis_thresh *= box_radius;
-	cout << "Second distance thresh is: " << second_dis_thresh << endl;
+	//cout << "Second distance thresh is: " << second_dis_thresh << endl;
 	recompute_score_dis_thresh *= box_radius;
 	//build grid to accelerate matching process
 	CVoxel_grid scene_grid;
@@ -1082,7 +1082,7 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 	//////recompute score
 	if (recompute_score_dis_thresh > 0)
 	{
-		cout << "Now recompute scores, distance thresh is: " << recompute_score_dis_thresh << endl;
+		//cout << "Now recompute scores, distance thresh is: " << recompute_score_dis_thresh << endl;
 		recomputeClusterScore(scene_grid,*scene_normals, recompute_score_dis_thresh, recompute_score_ang_thresh, pose_clusters);
 		std::sort(pose_clusters.begin(), pose_clusters.end(), zyk::pose_cluster_comp);
 	}
