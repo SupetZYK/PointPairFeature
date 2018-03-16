@@ -366,8 +366,8 @@ main(int argc, char *argv[])
   if (save_sampled_cloud_)
   {
     pcl::PointCloud<pcl::PointNormal>::Ptr model_with_normals(new pcl::PointCloud<pcl::PointNormal>);
-    pcl::copyPointCloud(*model,*model_with_normals);
-    pcl::copyPointCloud(*model_normals,*model_with_normals);
+    pcl::copyPointCloud(*keypoints,*model_with_normals);
+    pcl::copyPointCloud(*keyNormals,*model_with_normals);
     pcl::io::savePLYFile(model_filename_ + "_changed", *model_with_normals);
     std::cout<<"save sample changed!"<<std::endl;
   }

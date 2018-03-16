@@ -20,7 +20,7 @@ set(CMAKE_RELWITHDEBINFO_POSTFIX "_rd")
 #add_subdirectory(D:/Documents/GitHub/opencv_contrib/modules/rgbd/   rgbd)
 
 #PCL library directories
-find_package(PCL 1.8 REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})

@@ -46,6 +46,7 @@ int max_show_number (10);
 //iss
 //float iss_sr_ (6);
 //float iss_nr_ (4);
+//--mls  --scene_ds 0.05  --mod plat.ppfs --tar plat_scene.ply --sc  --st --tb --angle_thresh 0.15  --dis_thresh 0.1 -k -r --para_1 0.2 --para_2 2 --para_3 0.95 --para_4 1 --re_d 0.1 --re_a 0.3 --show_thresh 0.3
 void showHelp (char *filename)
 {
   std::cout << std::endl;
@@ -148,7 +149,7 @@ void parseCommandLine (int argc, char *argv[])
 	}
 	scene_filename_ = argv[filenames[0]];
 	cout << "Input scene file: " << scene_filename_ << endl;
-#else // new stype prompt style
+#else // new prompt style
   pcl::console::parse_argument(argc, argv, "--mod", model_ppfs_filename_);
   pcl::console::parse_argument(argc, argv, "--tar", scene_filename_);
   if (model_ppfs_filename_.empty() || scene_filename_.empty()) {
@@ -346,8 +347,37 @@ main(int argc, char *argv[])
 	cout << ">recompute score angle thresh: " << recopute_score_ang_thresh << endl;
 	cout << "second distance thresh: " << second_distance_thresh << endl;
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
-  int start_time=clock();
-	model_feature_space.match(scene_keypoints, scene_keyNormals, spread_ppf_switch_, two_ball_switch_, relativeReferencePointsNumber, max_vote_thresh, max_vote_percentage, angle_thresh, cluster_dis_thresh, recopute_score_dis_thresh, recopute_score_ang_thresh, second_distance_thresh, num_clusters_per_group, pose_clusters);
+#ifdef plane_check
+//    vector<vector<float> > plane_features(6,vector<float>(4,0.0));
+//    plane_features[0][2]=1;
+//    plane_features[0][3]=-25;
+//    plane_features[1][2]=-1;
+//    plane_features[2][1]=1;
+//    plane_features[2][3]=-70;
+//    plane_features[3][1]=-1;
+//    plane_features[3][3]=-55;
+//    plane_features[4][0]=1;
+//    plane_features[4][3]=-35;
+//    plane_features[5][0]=-1;
+//    plane_features[5][3]=-35;
+//    model_feature_space.setPlaneCheck(plane_features);
+    model_feature_space.plane_vote_thresh=2;
+#endif
+    int start_time=clock();
+    model_feature_space.match(scene_keypoints,
+                              scene_keyNormals,
+                              spread_ppf_switch_,
+                              two_ball_switch_,
+                              relativeReferencePointsNumber,
+                              max_vote_thresh,
+                              max_vote_percentage,
+                              angle_thresh,
+                              cluster_dis_thresh,
+                              recopute_score_dis_thresh,
+                              recopute_score_ang_thresh,
+                              second_distance_thresh,
+                              num_clusters_per_group,
+                              pose_clusters);
   int end_time=clock();
   std::cout<<"Time used: "<<(end_time-start_time)/1000.0<<"(s)"<<std::endl;
 	if(num_clusters_per_group<0)
@@ -357,21 +387,24 @@ main(int argc, char *argv[])
 		vector<int> correct_pose(100,0);
 		vector<int> incorrect_pose(100,0);
 		float correct_vote=0.0, incorrect_vote=0.0;
+        int num_correct_pose=0,num_incorrect_pose=0;
 		for (int i = 0; i < pose_clusters.size(); ++i) {
 			if (pose_clusters[i].vote_count > show_vote_thresh) {
 
-        for(int j=0;j<pose_clusters[i].size();++j){
-          int vote = pose_clusters[i].voteLists[j];
-          correct_pose[vote]+=1;
-        }
+                for(int j=0;j<pose_clusters[i].size();++j){
+                  int vote = pose_clusters[i].voteLists[j];
+                  correct_pose[vote]+=1;
+                }
+                num_correct_pose +=pose_clusters[i].size();
 				correct_vote += pose_clusters[i].old_vote_count;
 			}
 			else
 			{
-        for(int j=0;j<pose_clusters[i].size();++j){
-          int vote = pose_clusters[i].voteLists[j];
-          incorrect_pose[vote]+=1;
-        }
+                for(int j=0;j<pose_clusters[i].size();++j){
+                  int vote = pose_clusters[i].voteLists[j];
+                  incorrect_pose[vote]+=1;
+                }
+                num_incorrect_pose +=pose_clusters[i].size();
 				incorrect_vote += pose_clusters[i].old_vote_count;
 			}
 		}
@@ -381,9 +414,14 @@ main(int argc, char *argv[])
 		for (int i = 0; i < 100; ++i) {
 			ofs << correct_pose[i] << "  " << incorrect_pose[i] << endl;
 		}
+        ofs << "num correct pose: " << num_correct_pose << endl;
+        ofs << "num incorrect pose: " << num_incorrect_pose << endl;
 		ofs << "correct vote: " << correct_vote << endl;
 		ofs << "incorrect vote: " << incorrect_vote << endl;
 		ofs.close();
+
+        cout << "num correct pose: " << num_correct_pose << endl;
+        cout << "num incorrect pose: " << num_incorrect_pose << endl;
 	}
 	cout << "clusters size : " << pose_clusters.size() << endl;
 
@@ -472,7 +510,9 @@ main(int argc, char *argv[])
 				char key = 0;
 				int cnt = 0;
 				pcl::visualization::PCLVisualizer viewer("Correspondence Grouping");
+//                viewer.setCameraPosition(300,0,0,300,0,100,0,-1,0);
 				pcl::visualization::PointCloudColorHandlerCustom<PointType> scene_color_handler(scene, 0, 255, 0);
+
 				viewer.addPointCloud(scene, scene_color_handler, "scene_cloud");
 				viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "scene_cloud");
 				cout << ">>Show vote thresh is : " << show_vote_thresh << endl;
@@ -505,14 +545,14 @@ main(int argc, char *argv[])
 					ss_cloud << "instance" << i;
 					if (cnt++ >= max_show_number)break;
 					pcl::visualization::PointCloudColorHandlerCustom<PointType> rotated_model_color_handler(rotated_model, 255, 0, 0);
-					viewer.addPointCloud(rotated_model, rotated_model_color_handler, ss_cloud.str());
-					viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, ss_cloud.str());
+                    viewer.addPointCloud(rotated_model, rotated_model_color_handler, ss_cloud.str());
+                    viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, ss_cloud.str());
 
 
 					if (icp_type>0) {
 						pcl::PointCloud<PointType>::Ptr fine_rotated_model(new pcl::PointCloud<PointType>());
 						pcl::transformPointCloud(*model_keypoints, *fine_rotated_model, refined_pose_clusters[i].mean_transformation);
-						pcl::visualization::PointCloudColorHandlerCustom<PointType> fine_rotated_model_color_handler(fine_rotated_model, 0, 0, 255);
+                        pcl::visualization::PointCloudColorHandlerCustom<PointType> fine_rotated_model_color_handler(fine_rotated_model, 0, 0, 255);
 						viewer.addPointCloud(fine_rotated_model, fine_rotated_model_color_handler, ss_cloud.str()+"icp");
 						viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, ss_cloud.str()+"icp");
 						cout << "ICP_rot: " << refined_pose_clusters[i].mean_rot.transpose() << endl;
@@ -553,104 +593,5 @@ main(int argc, char *argv[])
 		
 	}
 
-	////
-	////load a model for icp
-	////
-	//pcl::PointCloud<PointType>::Ptr model_for_icp (new pcl::PointCloud<PointType>);
-	//pcl::io::loadPLYFile("../datafile/white_pipe_changed.ply",*model_for_icp);
-	////
-	////icp
-	////
-	//cout<<"begin icp"<<endl;
-	//pcl::IterativeClosestPoint<PointType,PointType> icp;
-	//icp.setTransformationEpsilon(1e-10);
-	//icp.setEuclideanFitnessEpsilon(0.01);
-	//icp.setMaximumIterations(300);
-	//
-	//for(int i=0;i<number;i++)
-	//{
-	//	
-	//	pcl::PointCloud<PointType>::Ptr out (new pcl::PointCloud<PointType>);
-	//	pcl::PointCloud<PointType>::Ptr out2 (new pcl::PointCloud<PointType>);
-	//	pcl::copyPointCloud(*model_for_icp,*out);
-	//	icp.setMaxCorrespondenceDistance(icp_dis_thresh);
-	//	icp.setInputSource(out);
-	//	icp.setInputTarget(scene);
-	//	icp.align(*out2,pose_clusters[i].mean_transformation.matrix());	
-	//	cout<<"icp converged? :"<<icp.hasConverged()<<endl;
-	//	cout<<"icp score: "<<icp.getFitnessScore()<<endl;
-	//	out->clear();
-	//	pcl::copyPointCloud(*out2,*out);
-	//	int cnt=30u;
-	//	while(cnt--)
-	//	{
-	//		icp.setInputSource(out);
-	//		icp.setInputTarget(scene);
-	//		icp.align(*out2);
-	//		static float last_score=10000000;
-	//		float this_score=icp.getFitnessScore();
-	//		
-	//		cout<<"icp converged? :"<<icp.hasConverged()<<endl;
-	//		cout<<"icp score: "<<this_score<<endl;
-	//		out->clear();
-	//		pcl::copyPointCloud(*out2,*out);
-
-	//		out2->clear();
-	//		//if(this_score>last_score)
-	//			//break;
-	//		if(abs(this_score-last_score)<1e-4)
-	//		{
-	//			//if(icp.getMaxCorrespondenceDistance()>21)
-	//			//{
-	//				//icp.setMaxCorrespondenceDistance(20);
-	//				//last_score=10000000;
-	//				//cout<<"change to 20"<<endl;
-	//				//continue;
-	//			//}
-	//			//else if(icp.getMaxCorrespondenceDistance()>11)
-	//			//{
-	//				//icp.setMaxCorrespondenceDistance(10);
-	//				//last_score=10000000;
-	//				//cout<<"change to 10"<<endl;
-	//				//continue;
-	//			//}
-	//			//else if(icp.getMaxCorrespondenceDistance()>2)
-	//			//{
-	//				//icp.setMaxCorrespondenceDistance(1);
-	//				//last_score=10000000;
-	//				//cout<<"change to 1"<<endl;
-	//				//continue;
-	//			//}
-	//			//else if(icp.getMaxCorrespondenceDistance()>0.8)
-	//			//{
-	//				//icp.setMaxCorrespondenceDistance(0.6);
-	//				//last_score=10000000;
-	//				//cout<<"change to 0.6"<<endl;
-	//				//continue;
-	//			//}
-
-	//			break;
-	//		}
-	//		last_score=this_score;
-	//	
-	//	}
-
-	//	cout<<">>>>>>>>>>ICP Finish!<<<<<<<<<<<"<<endl;	
-	//	pcl::visualization::PCLVisualizer viewer("icp view");
-	//	pcl::visualization::PointCloudColorHandlerCustom<PointType> scene_color_handler(scene, 0, 255, 0);
-	//	viewer.addPointCloud(scene, scene_color_handler, "scene_cloud");
-
-	//	//pcl::PointCloud<PointType>::Ptr off_scene_model(new pcl::PointCloud<PointType>());
-	//	//pcl::PointCloud<PointType>::Ptr off_scene_model_keypoints(new pcl::PointCloud<PointType>());
-
-	//	std::stringstream ss_cloud;
-	//	ss_cloud << "instance" << i;
-	//	pcl::visualization::PointCloudColorHandlerCustom<PointType> out_model_handle_custom (out, 255, 0, 0);
-	//	viewer.addPointCloud (out, out_model_handle_custom, ss_cloud.str ());
-	//	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, ss_cloud.str());
-	//	viewer.spin();
-	//}
-	//for (int i = 0; i < pose_clusters.size(); i++)
-	//	delete pose_clusters[i];
   return (0);
 }

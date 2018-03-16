@@ -36,6 +36,7 @@ float plane_ds_ (0.05f);
 float curvature_radius_ (0.05f);
 int angle_div_ (15);
 int distance_div_ (20);
+bool use_plane_flag_ (false);
 void showHelp(char *filename)
 {
 	std::cout << std::endl;
@@ -53,6 +54,7 @@ void showHelp(char *filename)
   std::cout << "     -w:              write the sampled model" << std::endl;
 	//std::cout << "     --ply:					Use .poly as input cloud. Default is .pcd" << std::endl;
   std::cout << "     --rn:            Reorient switch!" << std::endl;
+  std::cout << "     --plf:           Plane feature flag." << std::endl;
   std::cout << "     --cc:            Change Center switch!" << std::endl;
   std::cout << "     --so:            show original model" << std::endl;
   std::cout << "     --in:            Use existing normal files" << std::endl;
@@ -108,6 +110,10 @@ void parseCommandLine(int argc, char *argv[])
 	{
 		use_mls_ = true;
 	}
+    if (pcl::console::find_switch(argc, argv, "--plf"))
+    {
+        use_plane_flag_ = true;
+    }
 //	if (pcl::console::find_switch(argc, argv, "--cc"))
 //	{
 //		change_center_switch_ = true;
@@ -139,21 +145,20 @@ void parseCommandLine(int argc, char *argv[])
 
 
 
-
-
+bool isOnPlane(float x, float y, float z, Eigen::Vector4f& plane_param);
 int
 main(int argc, char *argv[])
 {
 	parseCommandLine(argc, argv);
 
 	showHelp(argv[0]);
-  pcl::PointCloud<pcl::PointNormal>::Ptr model(new pcl::PointCloud<pcl::PointNormal>());
-  pcl::PointCloud<pcl::PointNormal>::Ptr keypoints(new pcl::PointCloud<pcl::PointNormal>());
+    pcl::PointCloud<pcl::PointNormal>::Ptr model(new pcl::PointCloud<pcl::PointNormal>());
+    pcl::PointCloud<pcl::PointNormal>::Ptr keypoints(new pcl::PointCloud<pcl::PointNormal>());
 
-  double min_coord[3],max_coord[3];
-  if(!zyk::mesh_sampling(model_filename_,300000,*model,min_coord,max_coord)){
-    PCL_ERROR("Samping mesh fail!");
-    return -1;
+    double min_coord[3],max_coord[3];
+    if(!zyk::mesh_sampling(model_filename_,300000,*model,min_coord,max_coord)){
+        PCL_ERROR("Samping mesh fail!");
+     return -1;
   }
 
 
@@ -220,12 +225,40 @@ main(int argc, char *argv[])
 
 	pcl::visualization::PCLVisualizer key_visual("Key point Viewr");
 	key_visual.addCoordinateSystem(20);
-  key_visual.addPointCloud(keypoints, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(keypoints, 0.0, 0.0, 255.0), "keypoints");
-  //key_visual.addPointCloudNormals<pcl::PointNormal, pcl::PointNormal>(keypoints, keypoints, 1, 10, "keynormals");
+    key_visual.addPointCloud(keypoints, pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(keypoints, 0.0, 0.0, 255.0), "keypoints");
+    key_visual.addPointCloudNormals<pcl::PointNormal, pcl::PointNormal>(keypoints, keypoints, 1, 10, "keynormals");
 	key_visual.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 4, "keypoints");
 	key_visual.spin();
 
+    //
+    //zyk 2018-3-16 plane feature set
+    //
+     vector<bool> plane_flag(input_points->size(),false);
+    if(use_plane_flag_){
+        vector<Eigen::Vector4f > plane_features;
+        plane_features.push_back(Eigen::Vector4f(0,0,1,-25));
+        plane_features.push_back(Eigen::Vector4f(0,0,-1,0));
+        plane_features.push_back(Eigen::Vector4f(0,1,0,-70));
+        plane_features.push_back(Eigen::Vector4f(0,-1,0,-55));
+        plane_features.push_back(Eigen::Vector4f(1,0,0,-35));
+        plane_features.push_back(Eigen::Vector4f(-1,0,0,-35));
 
+        //loop through keypoints to get a plane bool vector
+        int plane_numbers=0;
+        for(int i=0;i<input_points->size();++i)
+        {
+            for(int j=0;j<plane_features.size();++j)
+            {
+                if(isOnPlane(input_points->at(i).x,input_points->at(i).y,input_points->at(i).z,plane_features[j]))
+                {
+                    plane_flag[i]=true;
+                    plane_numbers++;
+                    break;
+                }
+            }
+        }
+        std::cout<<"Number of points on plane: "<<plane_numbers<<std::endl;
+    }
 	//
 	//  Compute Model Descriptors  PPF Space for model 
 	//
@@ -238,7 +271,6 @@ main(int argc, char *argv[])
 	for (int i = 0; i < 3; i++)
 		cout << model_size[i] << " \t";
 	cout << endl;
-
 
 //  //
 //  // if use smart sampling ,the resolution needs to be recalculated!
@@ -254,10 +286,12 @@ main(int argc, char *argv[])
   _splitpath(model_filename_.c_str(), NULL, NULL, tmp, NULL);
   std::string objName(tmp);
   std::cout << "Trained object Name: " << objName << std::endl;
-  zyk::PPF_Space model_feature_space;
+    zyk::PPF_Space model_feature_space;
   cout << "trained using angle_div , distance_div: " << angle_div_ << ", " << distance_div_ << endl;
 
   model_feature_space.init(objName, input_points, input_normals, angle_div_ , distance_div_,true);
+  if(use_plane_flag_)
+      model_feature_space.setPlaneFlag(plane_flag);
   model_feature_space.model_size[0]=model_size[0];
   model_feature_space.model_size[1]=model_size[1];
   model_feature_space.model_size[2]=model_size[2];
@@ -273,9 +307,14 @@ main(int argc, char *argv[])
       cnt++;
   }
   cout << "no empty box number is: " << cnt << endl;
-	
   std::cout<<"save file name: "<<save_filename_<<std::endl;
   getchar();
   model_feature_space.save(save_filename_);
 	return 0;
+}
+
+bool isOnPlane(float x, float y, float z, Eigen::Vector4f& plane_param)
+{
+    Eigen::Vector4f p(x,y,z,1);
+    return abs(p.dot(plane_param))<0.0001;
 }

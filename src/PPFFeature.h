@@ -16,6 +16,7 @@
 #define use_neiboringIterator
 #define vote_flag_use_map
 #define view_based
+#define plane_check
 namespace zyk
 {
 	struct ZYK_EXPORTS PPF
@@ -28,7 +29,7 @@ namespace zyk
 
 	struct PPF_Accumulator
 	{
-		PPF_Accumulator(int pnt_number, int rot_angle_div){ acumulator = Eigen::MatrixXf(pnt_number, rot_angle_div); acumulator.setConstant(0); };
+        PPF_Accumulator(int pnt_number, int rot_angle_div){ acumulator = Eigen::MatrixXf(pnt_number, rot_angle_div); acumulator.setConstant(0); }
 		Eigen::MatrixXf acumulator;
 	};
 
@@ -43,14 +44,13 @@ namespace zyk
 #ifdef view_based
     bool init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, std::vector<std::vector<int> >&view_based_indexes,int angle_div, int distance_div, bool ignore_plane=false);
 #endif
-    //bool init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step,bool ignore_plane=false);
 		void clear();
 		////////////////////
 		////// property access
 		////////////////////
-		const string getName() const { return mName; };
-		const double getMaxD() const { return max_p[3]; };
-    const double getSampleRatio() const { return model_res / (zyk::norm(model_size, 3)); };
+        const string getName() const { return mName; }
+        const double getMaxD() const { return max_p[3]; }
+    const double getSampleRatio() const { return model_res / (zyk::norm(model_size, 3)); }
 	public:
 		////////////////////
 		//////methods
@@ -67,14 +67,14 @@ namespace zyk
 		void getppfBoxCoord(PPF& ppf, Eigen::Vector4i& ijk);
 		void getppfBoxCoord(PPF& ppf, int* ijk);
 		int getppfBoxIndex(PPF& ppf);
-		vector<box*>* getBoxVector() { return &ppf_box_vector; };
-		vector<PPF>* getPPFVector() { return &ppf_vector; };
+        vector<box*>* getBoxVector() { return &ppf_box_vector; }
+        vector<PPF>* getPPFVector() { return &ppf_vector; }
 
 		//in order to spread discretized ppf, use this to get neighboring ppf box
 		void getNeighboringPPFBoxIndex(int currentIndex,vector<int>&out_vec);
-		void getModelPointCloud(pcl::PointCloud<PointType>::Ptr&pointcloud){ pointcloud = input_point_cloud; };
-		void getCenteredPointCloud(pcl::PointCloud<PointType>::Ptr&pointcloud){ pointcloud = centered_point_cloud; };
-		void getPointNormalCloud(pcl::PointCloud<NormalType>::Ptr&pointNormals){ pointNormals = input_point_normal; };
+        void getModelPointCloud(pcl::PointCloud<PointType>::Ptr&pointcloud){ pointcloud = input_point_cloud; }
+        void getCenteredPointCloud(pcl::PointCloud<PointType>::Ptr&pointcloud){ pointcloud = centered_point_cloud; }
+        void getPointNormalCloud(pcl::PointCloud<NormalType>::Ptr&pointNormals){ pointNormals = input_point_normal; }
 
 		friend class boost::serialization::access;
 		
@@ -82,7 +82,26 @@ namespace zyk
 		float computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene, pcl::PointCloud<NormalType>::Ptr& scene_normals, float dis_thresh, float ang_thresh, zyk::pose_cluster &pose_clusters);
 		
 		////////match
-    void match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals, bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber, float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, float second_dis_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> >& pose_clusters);
+        void match(pcl::PointCloud<PointType>::Ptr scene,
+                   pcl::PointCloud<NormalType>::Ptr scene_normals,
+                   bool spread_ppf_switch,
+                   bool two_ball_switch,
+                   float relativeReferencePointsNumber,
+                   float max_vote_thresh,
+                   float max_vote_percentage,
+                   float angle_thresh,
+                   float first_dis_thresh,
+                   float recompute_score_dis_thresh,
+                   float recompute_score_ang_thresh,
+                   float second_dis_thresh,
+                   int num_clusters_per_group,
+                   vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> >& pose_clusters);
+#ifdef plane_check
+        //plane checker test 2018-3-14
+        void setPlaneFlag(std::vector<bool >& flag){plane_flag=flag;ver_=3;}
+        std::vector<bool >plane_flag;
+        int plane_vote_thresh;
+#endif
 		///////USER IO
 		bool save(std::string file_name);
 		bool load(std::string fine_name);
@@ -111,7 +130,7 @@ namespace zyk
 		BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 		/////////////METHODS
-    void recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &pose_clusters);
+        void recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &pose_clusters);
 		bool computeAllPPF();
 #ifdef view_based
     bool computeALL_Visible_PPF(std::vector<std::vector<int> >&view_based_indexes);
@@ -123,11 +142,11 @@ namespace zyk
 		//////basic property
 		////////////////////
 		std::string mName;
-    int ver_;
+        int ver_;
 		//for fast scene point access
 		//CVoxel_grid scene_grid;
 #ifdef view_based
-    std::vector<float> occlusion_weights;
+        std::vector<float> occlusion_weights;
 #endif
 		//ptr to data
 		pcl::PointCloud<PointType>::Ptr input_point_cloud;
@@ -167,10 +186,10 @@ namespace zyk
 template<class Archive>
 void zyk::PPF_Space::save(Archive& ar, const unsigned int version)
 {
-  ar & ver_;
+    ar & ver_;
 	ar & mName;
-  ar & grid_f1_div;
-  ar & grid_f4_div;
+    ar & grid_f1_div;
+    ar & grid_f4_div;
 	ar & model_res;
 	int ppf_vector_size=ppf_vector.size();
 	ar & ppf_vector_size;
@@ -195,9 +214,13 @@ void zyk::PPF_Space::save(Archive& ar, const unsigned int version)
 		ar & input_point_normal->at(i).normal_x;
 		ar & input_point_normal->at(i).normal_y;
 		ar & input_point_normal->at(i).normal_z;
-    if(ver_==2){
-        ar & occlusion_weights[i];
-    }
+        if(ver_==2){
+            ar & occlusion_weights[i];
+        }
+        if(ver_==3){
+            int flag=plane_flag[i];
+            ar & flag;
+        }
 	}
 
 }
@@ -206,10 +229,10 @@ template<class Archive>
 void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 {
 	int32_t ppf_vector_size = 0;
-  ar & ver_;
+    ar & ver_;
 	ar & mName;
-  ar & grid_f1_div;
-  ar & grid_f4_div;
+    ar & grid_f1_div;
+    ar & grid_f4_div;
 	ar & model_res;
 	ar & ppf_vector_size;
 	ppf_vector.resize(ppf_vector_size);
@@ -241,11 +264,16 @@ void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 		ar & _nor.normal_z;
 		input_point_cloud->push_back(_tem);
 		input_point_normal->push_back(_nor);
-    if(ver_==2){
-        float weight;
-        ar & weight;
-        occlusion_weights.push_back(weight);
-    }
+        if(ver_==2){//this version add view based weight
+            float weight;
+            ar & weight;
+            occlusion_weights.push_back(weight);
+        }
+        if(ver_==3){//this version add plane check
+            int isplane;
+            ar&isplane;
+            plane_flag.push_back(isplane);
+        }
 	}
 
   constructGrid(grid_f1_div,grid_f4_div);

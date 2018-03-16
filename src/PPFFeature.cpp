@@ -12,7 +12,7 @@ using namespace zyk;
 zyk::PPF_Space::PPF_Space()
 	:ignore_plane_switch(false)
 	, mName("")
-  , ver_(1)
+    , ver_(1)
 	, grid_f1_div(10)
 	, grid_f2_div(10)
 	, grid_f3_div(10)
@@ -23,7 +23,9 @@ zyk::PPF_Space::PPF_Space()
 	, cz(0)
 	, centered_point_cloud(new pcl::PointCloud<PointType>())
 {
-
+#ifdef plane_check
+    plane_vote_thresh=10;
+#endif
 }
 
 zyk::PPF_Space::~PPF_Space()
@@ -869,6 +871,9 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 
 	int tst_cnt1 = 0;
 	int tst_cnt2 = 0;
+    int tst_cnt3 = 0;//record plane reference point number;
+    int tst_cnt4 = 0;//record all plane ppf number
+    int tst_cnt5 = 0;//record number of poses that plane feature generate
 	///////// vote flag, See Going further with ppf
 #ifdef vote_flag_use_map
 	unordered_map<int, int>vote_flag;
@@ -900,16 +905,20 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 				match_count = 0;
 				match_percent += 5;
 				cout << "Match : " << match_percent << "%." << endl;
-				//cout << "tst_cnt1: " << tst_cnt1 << endl;
-				//cout << "tst_cunt2: " << tst_cnt2 << endl;
-				tst_cnt1 = 0;
-				tst_cnt2 = 0;
+//				cout << "tst_cnt1: " << tst_cnt1 << endl;
+//				cout << "tst_cunt2: " << tst_cnt2 << endl;
+//				tst_cnt1 = 0;
+//				tst_cnt2 = 0;
 			}
 			int reference_pnt_index = (*p_current_point_box)[cnt1];
 			/////////build an accumulator for this reference point
 			// in matlab the row size is size+1, why?
 			zyk::PPF_Accumulator small_acum(centered_point_cloud->size(), 30);
-			zyk::PPF_Accumulator big_acum(centered_point_cloud->size(), 30);
+            zyk::PPF_Accumulator big_acum(centered_point_cloud->size(), 30);
+#ifdef plane_check
+            // 2018-3-14 by zyk add plane checker
+            int plane_checker=0;
+#endif
 #ifdef use_eigen
 			const Eigen::Vector3f& rp = scene->at(reference_pnt_index).getVector3fMap();
 			const Eigen::Vector3f& rn = scene_normals->at(reference_pnt_index).getNormalVector3fMap();
@@ -957,8 +966,13 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 					//calculate ppf
 					zyk::PPF current_ppf;
 					zyk::PPF_Space::computeSinglePPF(rp, rn, sp, sn, current_ppf);
-					if (abs(current_ppf.ppf.f3) < 0.035 && abs(current_ppf.ppf.f1 - M_PI_2) < 0.035 && abs(current_ppf.ppf.f2 - M_PI_2) < 0.035)
+                    if (abs(current_ppf.ppf.f3) < 0.035 && abs(current_ppf.ppf.f1 - M_PI_2) < 0.035 && abs(current_ppf.ppf.f2 - M_PI_2) < 0.035){
+#ifdef plane_check
+                        plane_checker++;
+#endif
+                        tst_cnt4++;
 						continue;
+                    }
 					//do hash
 					int ppf_box_index = getppfBoxIndex(current_ppf);
 					if (ppf_box_index == -1)
@@ -1045,12 +1059,26 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 				{
 					if ((small_acum.acumulator(row, col) > vote_thresh_small) || (two_ball_switch&&big_acum.acumulator(row, col) > vote_thresh_big))
 					{
+#ifdef plane_check
+                        if(!plane_flag.empty()){
+                            if(plane_checker>plane_vote_thresh){
+                                tst_cnt3++;
+                                if(!plane_flag[row])
+                                    continue;
+                            }
+                            else{
+                                if(plane_flag[row])
+                                    continue;
+                            }
+                        }
+#endif
 						num_poses_count++;
 						tst_cnt1++;
 						float alpha = col / 30.0 * 2 * M_PI - M_PI;
 						Eigen::Affine3f transformation;
 						if (!zyk::PPF_Space::getPoseFromPPFCorresspondence(centered_point_cloud->at(row), input_point_normal->at(row), scene->at(reference_pnt_index), scene_normals->at(reference_pnt_index), alpha, transformation))
 							continue;
+
 						rawClusters.push_back(zyk::pose_cluster(transformation, small_acum.acumulator(row, col)));
 					}
 
@@ -1060,26 +1088,35 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 		}
 
 	}
+    std::cout<<"All plane points: "<<tst_cnt3<<std::endl;
+    std::cout<<"All plane features: "<<tst_cnt4<<std::endl;
+    std::cout<<"Num of poses plane features: "<<tst_cnt5<<std::endl;
 	std::sort(rawClusters.begin(), rawClusters.end(), zyk::pose_cluster_comp);
 	cout << "all poses number : " << rawClusters.size() << endl;
 	////////////Now do clustering
 	// raw cluster first
-	for (int i = 0; i < rawClusters.size(); i++)
-	{
-		int result = 0;
-		for (int j = 0; j < pose_clusters.size(); j++)
-		{
-			if (pose_clusters[j].checkAndPutIn(rawClusters[i].transformations[0], rawClusters[i].vote_count, first_dis_thresh, angle_thresh))
-			{
-				//if(++result>=max_clusters_per_pose_can_be_in)
-				result = 1;
-				break;	
-			}
-		}
-		if (!result)
-			pose_clusters.push_back(rawClusters[i]);
-	}
+    if(first_dis_thresh<0)//only for test
+    {
+        for (int i = 0; i < rawClusters.size(); i++)
+        {
+            int result = 0;
+            for (int j = 0; j < pose_clusters.size(); j++)
+            {
+                if (pose_clusters[j].checkAndPutIn(rawClusters[i].transformations[0], rawClusters[i].vote_count, first_dis_thresh, angle_thresh))
+                {
+                    //if(++result>=max_clusters_per_pose_can_be_in)
+                    result = 1;
+                    break;
+                }
+            }
+            if (!result)
+                pose_clusters.push_back(rawClusters[i]);
+        }
+    }
+    else
+        pose_clusters=rawClusters;
 	std::sort(pose_clusters.begin(), pose_clusters.end(), zyk::pose_cluster_comp);
+
 
 	//////recompute score
 	if (recompute_score_dis_thresh > 0)

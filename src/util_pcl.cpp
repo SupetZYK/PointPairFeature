@@ -132,7 +132,7 @@ pcl::IndicesPtr zyk::uniformDownSamplePointAndNormal(pcl::PointCloud<PointType>:
 
 	outNormal->height = 1;
 	outNormal->is_dense = true;
-	outNormal->points.resize(selectedIndex->size());
+    outNormal->resize(selectedIndex->size());
 	for (int i = 0; i < selectedIndex->size(); i++)
 		outNormal->points[i]= pointNormal->points[selectedIndex->at(i)];
 	return selectedIndex;
@@ -161,7 +161,7 @@ pcl::IndicesPtr zyk::SmartDownSamplePointAndNormal(pcl::PointCloud<PointType>::P
 
 	outNormal->height = 1;
 	outNormal->is_dense = true;
-  outNormal->points.resize(selectedIndex->size());
+  outNormal->resize(selectedIndex->size());
   for (int i = 0; i < selectedIndex->size(); i++)
     outNormal->points[i] = pointNormal->points[selectedIndex->at(i)];
   return selectedIndex;
