@@ -1,4 +1,5 @@
 #include "Detectors_2.h"
+//#include "Detector_XML.h"
 #include "PPFFeature.h"
 #include <pcl/common/transforms.h>
 #include <pcl/surface/mls.h>
@@ -290,14 +291,17 @@ bool CDetectors3D::findPart(const int objIdx)
 
 bool CDetectors3D::findPart(const vector<Vec3d>& pointCloud, const int objIdx)
 {
-	readScene(pointCloud);
-	findPart(objIdx);
+	if (!readScene(pointCloud))
+		return false;
+	if (findPart(objIdx))
+		return true;
+	return false;
 }
 
 bool CDetectors3D::findParts(const vector<Vec3d>& pointCloud)
 {
-	readScene(pointCloud);
-	//@todo repeated using find
+	if (!readScene(pointCloud))
+		return false;
 	bool res = false;
 	//map<string, CDetectModel3D*>::iterator it;
 	//for (it=detectObjects.begin();it!=detectObjects.end();++it)
@@ -306,7 +310,7 @@ bool CDetectors3D::findParts(const vector<Vec3d>& pointCloud)
 	for (int i = 0; i < detectObjects.size(); ++i) {
 		if (detectObjects[i]->mDetectObjParams.isDetected) {
 			findPart(i);
-			res=true
+			res = true;
 		}
 	}
 	return res;

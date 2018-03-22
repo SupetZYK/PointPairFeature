@@ -1,6 +1,25 @@
 #include "Detector_XML.h"
 #include "Detectors_2.h"
+#include <sstream>
+std::vector<std::string> split(std::string str, std::string pattern)
+{
+	std::string::size_type pos;
+	std::vector<std::string> result;
+	str += pattern;            //扩展字符串以方便操作
+	unsigned int size = str.size();
 
+	for (unsigned int i = 0; i < size; i++)
+	{
+		pos = str.find(pattern, i);
+		if (pos < size)
+		{
+			std::string s = str.substr(i, pos - i);
+			result.push_back(s);
+			i = pos + pattern.size() - 1;
+		}
+	}
+	return result;
+}
 bool Detector_XML::parseDetectorParams(TiXmlHandle hDoc, CDetectors3D::detectorParams &DetectorParams)
 {
 	try
@@ -80,6 +99,25 @@ bool Detector_XML::parseDetectObjParams(TiXmlHandle hDoc, vector <CDetectModel3D
 		return false;
 	}
 }
+bool Detector_XML::Read3DdetectSetingParams(std::string filename, CDetectors3D::detectorParams &DetectorParams, vector<CDetectModel3D::detectObjParams> &DetectObjsParams) {
+	char* seg = " ";
+	TiXmlDocument doc;
+	if (!doc.LoadFile(filename.c_str()))
+	{
+		string str = doc.ErrorDesc();
+		return false;
+	}
+	TiXmlHandle hDoc(&doc);
+	if (!parseDetectorParams(hDoc, DetectorParams))
+	{
+		return false;
+	}
+	if (!parseDetectObjParams(hDoc, DetectObjsParams))
+	{
+		return false;
+	}
+	return true;
+}
 
 void Detector_XML::Write3DdetectSetingParams(const std::string &filename, const CDetectors3D::detectorParams &DetectorParams, const vector <CDetectModel3D::detectObjParams> &DetectObjsParams)
 {
@@ -111,4 +149,31 @@ void Detector_XML::Write3DdetectSetingParams(const std::string &filename, const 
 		detectObject->LinkEndChild(paramValue);
 	}
 	doc.SaveFile(filename.c_str());
+}
+
+void CDetectors3D::updataParaFromFile(string paraFileName, string modelFileDir)
+{
+	detectorParams _det;
+	vector<CDetectModel3D::detectObjParams> _detobjs;
+	if (Detector_XML::Read3DdetectSetingParams(paraFileName, DetectorParams, _detobjs)) {
+		for (int i = 0; i < _detobjs.size(); i++) {
+			for (int j = 0; j < detectObjects.size(); j++) {
+				if (_detobjs[i].ObjectName == detectObjects[j]->mDetectObjParams.ObjectName)
+				{
+					detectObjects[j]->mDetectObjParams = _detobjs[i];
+				}
+			}
+		}
+
+		//read models
+		for (int j = 0; j < detectObjects.size(); j++) {
+			if (detectObjects[j]->mDetectObjParams.isDetected)
+			{
+				stringstream str;
+				str << modelFileDir << "/" << detectObjects[j]->mDetectObjParams.ObjectName << ".ppfs";
+				std::string _path = str.str();
+				detectObjects[j]->readSurfaceModel(_path);
+			}
+		}
+	}
 }

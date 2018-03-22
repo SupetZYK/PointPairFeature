@@ -169,7 +169,6 @@ public:
 	*/
 	bool findPart(const vector<Vec3d>& pointCloud, const int objIdx);
 	/** detect all models in the detectors
-	*@ keyPointRatio, key point to be used. 0.2 is recommended, large value may not improve the accuracy but slow down the process greatly
 	*/
 	bool findParts(const vector<Vec3d>& pointCloud);
 	/** read in a pre-created surface model and return its pointer
@@ -185,11 +184,6 @@ public:
 
 	void updataParaFromFile(string paraFileName, string modelFileDir);
 	///** get objects map
-	//*/
-	//const std::map <std::string, CDetectModel3D*>& getDetectorModels() const {
-	//	return detectObjects;
-	//};
-
 	std::vector <CDetectModel3D*> detectObjects;
 
 	detectorParams DetectorParams;
