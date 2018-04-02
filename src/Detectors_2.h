@@ -99,7 +99,9 @@ public:
 	*@ savePath, path of the surface model to be created 
 	*@ objName, name of the surface model to be created
 	*/
-	int createSurModelFromCADFile(string filePath, string savePath="", string objName="");
+	int createSurModelFromCADFile(string filePath, string objName="");
+
+	bool saveSurfaceModel(string save_file_path_);
 	/** clear the surface model
 	*/
 	void clearSurModel();

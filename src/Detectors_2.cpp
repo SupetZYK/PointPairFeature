@@ -72,7 +72,7 @@ bool CDetectModel3D::readSurfaceModel(string filePath)
 //	return true;
 //}
 
-int CDetectModel3D::createSurModelFromCADFile(string filePath, string savePath, string objName)
+int CDetectModel3D::createSurModelFromCADFile(string filePath, string objName)
 {
   pcl::PointCloud<pcl::PointNormal>::Ptr model(new pcl::PointCloud<pcl::PointNormal>());
   pcl::PointCloud<pcl::PointNormal>::Ptr keypoints(new pcl::PointCloud<pcl::PointNormal>());
@@ -103,14 +103,7 @@ int CDetectModel3D::createSurModelFromCADFile(string filePath, string savePath, 
   }
   this->mDetectObjParams.ObjectName = objName;
 
-  std::string save_filename_;
-  if (savePath.empty()) {
-    int pos = filePath.find_last_of('.');
-    save_filename_ = filePath.substr(0, pos);
-    save_filename_ += ".ppfs";
-  }
-  else
-    save_filename_ = savePath;
+
 
 
   if (p_PPF != NULL) {
@@ -123,10 +116,20 @@ int CDetectModel3D::createSurModelFromCADFile(string filePath, string savePath, 
 
   p_PPF->model_res = model_ss_;
 
-  if (!p_PPF->save(save_filename_))
-	  return -3;
+}
 
-	return 1;
+bool CDetectModel3D::saveSurfaceModel(string saveName)
+{
+	if (p_PPF == NULL)
+		return false;
+	if (saveName.empty()) {
+		return false;
+	}
+	if (saveName.find(".ppfs") == string::npos)
+		return false;
+	if (!p_PPF->save(saveName))
+		return false;
+	return true;
 }
 
 void CDetectModel3D::clearSurModel()
