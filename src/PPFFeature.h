@@ -15,8 +15,8 @@
 //#define use_eigen
 #define use_neiboringIterator
 #define vote_flag_use_map
-#define view_based
-#define plane_check
+//#define view_based
+//#define plane_check
 namespace zyk
 {
 	struct ZYK_EXPORTS PPF
@@ -214,13 +214,17 @@ void zyk::PPF_Space::save(Archive& ar, const unsigned int version)
 		ar & input_point_normal->at(i).normal_x;
 		ar & input_point_normal->at(i).normal_y;
 		ar & input_point_normal->at(i).normal_z;
+#ifdef view_based
         if(ver_==2){
             ar & occlusion_weights[i];
         }
+#endif
+#ifdef plane_check
         if(ver_==3){
             int flag=plane_flag[i];
             ar & flag;
         }
+#endif
 	}
 
 }
@@ -264,16 +268,20 @@ void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 		ar & _nor.normal_z;
 		input_point_cloud->push_back(_tem);
 		input_point_normal->push_back(_nor);
+#ifdef view_based
         if(ver_==2){//this version add view based weight
             float weight;
             ar & weight;
             occlusion_weights.push_back(weight);
         }
+#endif
+#ifdef plane_check
         if(ver_==3){//this version add plane check
             int isplane;
             ar&isplane;
             plane_flag.push_back(isplane);
         }
+#endif
 	}
 
   constructGrid(grid_f1_div,grid_f4_div);

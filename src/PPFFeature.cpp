@@ -33,7 +33,7 @@ zyk::PPF_Space::~PPF_Space()
 	for (int i = 0; i < ppf_box_vector.size();i++)
     if (ppf_box_vector[i] != NULL) delete ppf_box_vector[i];
 }
-
+#ifdef view_based
 bool PPF_Space::init(string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, std::vector<std::vector<int> > &view_based_indexes, int angle_div, int distance_div, bool ignore_plane)
 {
   mName = Name;
@@ -61,6 +61,7 @@ bool PPF_Space::init(string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pc
   return true;
 
 }
+#endif
 //bool zyk::PPF_Space::init(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, float angle_step, float distance_step, bool ignore_plane)
 //{
 //	assert(angle_step>0 && distance_step>0);
@@ -565,7 +566,7 @@ bool zyk::PPF_Space::computeAllPPF()
 
   return true;
 }
-
+#ifdef view_based
 bool PPF_Space::computeALL_Visible_PPF(std::vector<std::vector<int> > &view_based_indexes)
 {
   //check
@@ -613,6 +614,7 @@ bool PPF_Space::computeALL_Visible_PPF(std::vector<std::vector<int> > &view_base
   }
   return true;
 }
+#endif
 void zyk::PPF_Space::getppfBoxCoord(PPF& ppf, Eigen::Vector4i& ijk)
 {
 	if (!pcl_isfinite(ppf.ppf.f1) || !pcl_isfinite(ppf.ppf.f2) || !pcl_isfinite(ppf.ppf.f3) || !pcl_isfinite(ppf.ppf.f4) || !pcl_isfinite(ppf.ppf.alpha_m))
@@ -1088,9 +1090,11 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 		}
 
 	}
+#ifdef plane_check
     std::cout<<"All plane points: "<<tst_cnt3<<std::endl;
     std::cout<<"All plane features: "<<tst_cnt4<<std::endl;
     std::cout<<"Num of poses plane features: "<<tst_cnt5<<std::endl;
+#endif
 	std::sort(rawClusters.begin(), rawClusters.end(), zyk::pose_cluster_comp);
 	cout << "all poses number : " << rawClusters.size() << endl;
 	////////////Now do clustering

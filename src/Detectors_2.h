@@ -172,6 +172,9 @@ public:
 	bool findPart(const vector<Vec3d>& pointCloud, const int objIdx);
 	/** detect all models in the detectors
 	*/
+	bool findParts();
+	/** detect all models in the detectors
+	*/
 	bool findParts(const vector<Vec3d>& pointCloud);
 	/** read in a pre-created surface model and return its pointer
 	*@ filePath, path of the surface model file

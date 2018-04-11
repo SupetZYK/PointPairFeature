@@ -137,7 +137,7 @@ void parseCommandLine(int argc, char *argv[])
 	plane_ds_ = model_ds_;
 	pcl::console::parse_argument(argc, argv, "--plane_ds", plane_ds_);
 	pcl::console::parse_argument(argc, argv, "--curv_r", curvature_radius_);
-  pcl::console::parse_argument(argc, argv, "--sp", ang_degree_thresh);
+	pcl::console::parse_argument(argc, argv, "--sp", ang_degree_thresh);
 	pcl::console::parse_argument(argc, argv, "--a_div", angle_div_);
 	pcl::console::parse_argument(argc, argv, "--d_div", distance_div_);
 
@@ -233,6 +233,7 @@ main(int argc, char *argv[])
     //
     //zyk 2018-3-16 plane feature set
     //
+#ifdef plane_check
      vector<bool> plane_flag(input_points->size(),false);
     if(use_plane_flag_){
         vector<Eigen::Vector4f > plane_features;
@@ -259,6 +260,7 @@ main(int argc, char *argv[])
         }
         std::cout<<"Number of points on plane: "<<plane_numbers<<std::endl;
     }
+#endif
 	//
 	//  Compute Model Descriptors  PPF Space for model 
 	//
@@ -290,8 +292,10 @@ main(int argc, char *argv[])
   cout << "trained using angle_div , distance_div: " << angle_div_ << ", " << distance_div_ << endl;
 
   model_feature_space.init(objName, input_points, input_normals, angle_div_ , distance_div_,true);
+#ifdef plane_check
   if(use_plane_flag_)
       model_feature_space.setPlaneFlag(plane_flag);
+#endif
   model_feature_space.model_size[0]=model_size[0];
   model_feature_space.model_size[1]=model_size[1];
   model_feature_space.model_size[2]=model_size[2];

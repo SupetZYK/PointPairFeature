@@ -305,6 +305,13 @@ bool CDetectors3D::findParts(const vector<Vec3d>& pointCloud)
 {
 	if (!readScene(pointCloud))
 		return false;
+	return findParts();
+}
+
+bool CDetectors3D::findParts()
+{
+	if (scene->empty())
+		return false;
 	bool res = false;
 	//map<string, CDetectModel3D*>::iterator it;
 	//for (it=detectObjects.begin();it!=detectObjects.end();++it)
