@@ -235,27 +235,17 @@ bool zyk::readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr o
 		ifstream fileread;
 		long size;
 		char * buffer;
-		// 要读入整个文件，必须采用二进制打开   
 		fileread.open(filename, ios::binary);
-		// 获取filestr对应buffer对象的指针（获得这个流对象的指针）
 		pbuf = fileread.rdbuf();
 
-		// 调用buffer对象方法获取文件大小  （当复位位置指针指向文件缓冲区的末尾时候pubseekoff返回的值就是整个文件流大小）
 		size = pbuf->pubseekoff(0, ios::end, ios::in);
-		pbuf->pubseekpos(0, ios::in);   //再让pbuf指向文件流开始位置
+		pbuf->pubseekpos(0, ios::in); 
 
-		// 分配内存空间  
 		buffer = new char[size];
-
-		// 获取文件内容  
 		pbuf->sgetn(buffer, size);
 
 		fileread.close();
 
-
-		// 输出到标准输出  
-
-		//最佳方法按字符遍历整个buffer
 		string temp = "";
 		PointType Pnts;
 
@@ -273,7 +263,7 @@ bool zyk::readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr o
 				}
 				else
 				{
-					if (!isy)  //如果是x的值
+					if (!isy)
 					{
 						if (!temp.empty())
 						{
@@ -283,7 +273,7 @@ bool zyk::readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr o
 							temp = "";
 						}
 					}
-					else                  //如果是y的值
+					else 
 					{
 						if (!temp.empty())
 						{
@@ -295,7 +285,7 @@ bool zyk::readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr o
 					}
 				}
 			}
-			else   //这里是z
+			else
 			{
 				if (!temp.empty())
 				{
@@ -322,26 +312,6 @@ bool zyk::readPointCloud(std::string filename, pcl::PointCloud<PointType>::Ptr o
 	}
 	return true;
 }
-
-//void ISSmethod(const PointCloud<PointType>::Ptr &inCloud, double salientRatio, double NMPratio, PointCloud<PointType>::Ptr &outCloud)
-//{
-//	pcl::search::KdTree<pcl::PointXYZRGBA>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZRGBA>());
-//	tree->setInputCloud(inCloud);
-//	// Fill in the model cloud
-//	//float model_resolution = resolution;
-//	// Compute model_resolution
-//	pcl::ISSKeypoint3D<pcl::PointXYZRGBA, pcl::PointXYZRGBA> iss_detector;
-//	iss_detector.setSearchMethod(tree);
-//	iss_detector.setSalientRadius(salientRatio );//ori---6 越小，关键点越多  the spherical neighborhood used to compute the scatter matrix
-//	iss_detector.setNonMaxRadius(NMPratio);//ori---4 同上   The non maxima suppression radius
-//	iss_detector.setThreshold21(0.975);//old---0.975
-//	iss_detector.setThreshold32(0.975);//old---0.975
-//	iss_detector.setMinNeighbors(5);//Minimum number of neighbors that has to be found while applying the non maxima suppression algorithm.
-//	iss_detector.setNumberOfThreads(4);
-//	iss_detector.setInputCloud(inCloud);
-//	iss_detector.compute(*outCloud);
-//
-//}
 
 
 void zyk::transformNormals(const pcl::PointCloud<NormalType>&normals_in, pcl::PointCloud<NormalType>&normals_out, const Eigen::Affine3f& transform)

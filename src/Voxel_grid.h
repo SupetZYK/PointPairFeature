@@ -55,36 +55,28 @@ namespace zyk
 		pcl::PointCloud<PointType>::Ptr getInputPointCloud(){ return input_point_cloud; };
 		void setInputPointCloud(pcl::PointCloud<PointType>::Ptr pc) { input_point_cloud = pc; };
 	private:
-		///////////////////////////////////////////
-		//////////////基本属性/////////////////////
-		///////////////////////////////////////////
-		//grid的三个方向的划分数量
+
 		int grid_x_div;
 		int grid_y_div;
 		int grid_z_div;
-		//存储box的容器,按照x优先变化，y其次，z最外层的顺序存储。
+
 		vector<box*> box_vector;
-		//grid的两个极限点坐标
+
 		Eigen::Array3f min_p;
 		Eigen::Array3f max_p;
 
-		//指向点云的指针
 		pcl::PointCloud<PointType>::Ptr input_point_cloud;
 
 
 
-		///////////////////////////////////////////
-		//////////////辅助属性（可以计算出来的）
-		///////////////////////////////////////////
 		int total_box_num;
-		//每一个box的x，y，z的大小
+
 		Eigen::Array3f leaf_size;
 		Eigen::Array3f inv_leaf_size;
-		//为了根据box的grid坐标求vector中的index而保存的一个乘子
+
 		Eigen::Vector3i grid_div_mul;
-		//////////////////////隐藏的方法
+
 		bool constructGrid();
-		//寻找输入点云的bounding box，并给类中的两个点变量赋值。
 		bool findBoundingBox();
 	};
 	/*Class that used to iterate the neiboring of a specific voxel in N-dimmensional space

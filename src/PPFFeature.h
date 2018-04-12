@@ -15,8 +15,6 @@
 //#define use_eigen
 #define use_neiboringIterator
 #define vote_flag_use_map
-//#define view_based
-//#define plane_check
 namespace zyk
 {
 	struct ZYK_EXPORTS PPF
@@ -41,9 +39,6 @@ namespace zyk
 	public:
 		//construct
     bool init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, int angle_div, int distance_div, bool ignore_plane=false);
-#ifdef view_based
-    bool init(std::string Name, pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormal, std::vector<std::vector<int> >&view_based_indexes,int angle_div, int distance_div, bool ignore_plane=false);
-#endif
 		void clear();
 		////////////////////
 		////// property access
@@ -60,7 +55,6 @@ namespace zyk
 		static float computeAlpha(const Eigen::Vector3f& first_pnt, const Eigen::Vector3f& first_normal, const Eigen::Vector3f& second_pnt);
 		static void computeSinglePPF(const PointType& first_pnt, const NormalType& first_normal, const PointType& second_pnt, const NormalType& second_normal, zyk::PPF& ppf);
 		static void computeSinglePPF(const Eigen::Vector3f& first_pnt, const Eigen::Vector3f& first_normal, const Eigen::Vector3f& second_pnt, const Eigen::Vector3f& second_normal,zyk::PPF& ppf);
-		// for train only, in match step, use the above two.
 		static void computeSinglePPF(pcl::PointCloud<PointType>::Ptr pointcloud, pcl::PointCloud<NormalType>::Ptr pointNormalType, int32_t index1, int32_t index2, PPF& ppf);
 		static bool getPoseFromPPFCorresspondence(PointType& model_point, NormalType& model_normal, PointType& scene_point, NormalType&scene_normal, float alpha, Eigen::Affine3f& transformation);
 		//test speed
@@ -96,12 +90,6 @@ namespace zyk
                    float second_dis_thresh,
                    int num_clusters_per_group,
                    vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> >& pose_clusters);
-#ifdef plane_check
-        //plane checker test 2018-3-14
-        void setPlaneFlag(std::vector<bool >& flag){plane_flag=flag;ver_=3;}
-        std::vector<bool >plane_flag;
-        int plane_vote_thresh;
-#endif
 		///////USER IO
 		bool save(std::string file_name);
 		bool load(std::string fine_name);
@@ -132,9 +120,6 @@ namespace zyk
 		/////////////METHODS
         void recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &pose_clusters);
 		bool computeAllPPF();
-#ifdef view_based
-    bool computeALL_Visible_PPF(std::vector<std::vector<int> >&view_based_indexes);
-#endif
 		bool findBoundingBox();
     bool constructGrid(int angle_div,int distance_div);
 	protected:
@@ -143,11 +128,6 @@ namespace zyk
 		////////////////////
 		std::string mName;
         int ver_;
-		//for fast scene point access
-		//CVoxel_grid scene_grid;
-#ifdef view_based
-        std::vector<float> occlusion_weights;
-#endif
 		//ptr to data
 		pcl::PointCloud<PointType>::Ptr input_point_cloud;
 		pcl::PointCloud<PointType>::Ptr centered_point_cloud;
@@ -214,17 +194,6 @@ void zyk::PPF_Space::save(Archive& ar, const unsigned int version)
 		ar & input_point_normal->at(i).normal_x;
 		ar & input_point_normal->at(i).normal_y;
 		ar & input_point_normal->at(i).normal_z;
-#ifdef view_based
-        if(ver_==2){
-            ar & occlusion_weights[i];
-        }
-#endif
-#ifdef plane_check
-        if(ver_==3){
-            int flag=plane_flag[i];
-            ar & flag;
-        }
-#endif
 	}
 
 }
@@ -268,20 +237,6 @@ void zyk::PPF_Space::load(Archive& ar, const unsigned int version)
 		ar & _nor.normal_z;
 		input_point_cloud->push_back(_tem);
 		input_point_normal->push_back(_nor);
-#ifdef view_based
-        if(ver_==2){//this version add view based weight
-            float weight;
-            ar & weight;
-            occlusion_weights.push_back(weight);
-        }
-#endif
-#ifdef plane_check
-        if(ver_==3){//this version add plane check
-            int isplane;
-            ar&isplane;
-            plane_flag.push_back(isplane);
-        }
-#endif
 	}
 
   constructGrid(grid_f1_div,grid_f4_div);

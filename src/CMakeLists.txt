@@ -33,13 +33,7 @@ aux_source_directory(. zyk_ppf_src)
 #add target libs
 add_library(zyk_ppf SHARED ${zyk_ppf_src})
 
-#python bindings
-aux_source_directory(./python/  zyk_ppf_python_src)
-add_library(zyk_ppf_python SHARED ${zyk_ppf_python_src})
-
 target_link_libraries(zyk_ppf ${PCL_LIBRARIES})
-target_link_libraries(zyk_ppf_python zyk_ppf ${PCL_LIBRARIES})
 
 #apps and tools
-add_subdirectory(app)
 add_subdirectory(tests)
