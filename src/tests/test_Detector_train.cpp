@@ -3,7 +3,7 @@
 #include <time.h>
 #include "Detectors_2.h"
 using namespace std;
-std::string model_file = "../../../datafile/pipe.obj";
+std::string model_file = "plat.obj";
 
 int main(int argc, char**argv) {
 
@@ -15,7 +15,8 @@ int main(int argc, char**argv) {
 	opt.mlsOrder = 1;
 
 	detectorModel.setTrainOptions(opt);
-	detectorModel.createSurModelFromCADFile(model_file, "../../../datafile/plat_d.ppfs");
+  detectorModel.createSurModelFromCADFile(model_file);
+  detectorModel.saveSurfaceModel("plat.ppfs");
 	system("pause");
 	return 0;
 }

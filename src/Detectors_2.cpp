@@ -115,7 +115,7 @@ int CDetectModel3D::createSurModelFromCADFile(string filePath, string objName)
 	  return -2;
 
   p_PPF->model_res = model_ss_;
-
+  return 1;
 }
 
 bool CDetectModel3D::saveSurfaceModel(string saveName)
