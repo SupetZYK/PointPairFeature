@@ -10,10 +10,10 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 # target_link_libraries(${test_name} zyk_ppf rgbd ${PCL_LIBRARIES} ${OpenCV_LIBS})
 # endforeach(test_file_namme ${test_list})
 
-add_executable(test_detectors  test_detectors.cpp)
+add_executable(test_detectors  test_Detectors.cpp)
 target_link_libraries(test_detectors zyk_ppf)
 
-add_executable(test_detector_train  test_detector_train.cpp)
+add_executable(test_detector_train  test_Detector_train.cpp)
 target_link_libraries(test_detector_train zyk_ppf)
 
 add_executable(test_neiboriterator test_neiborIterator.cpp)

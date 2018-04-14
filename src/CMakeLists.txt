@@ -3,9 +3,9 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 project(ppf_recoginition)
 
 add_compile_options(-std=c++11)
-set(PCL_DIR "D:/Program Files/PCL 1.8.0/cmake")
+#set(PCL_DIR "D:/Program Files/PCL 1.8.0/cmake")
 #set(PCL_DIR "D:/Program Files/PCL/cmake")
-
+set(PCL_DIR /usr/local/share/pcl-1.8)
 
 #OpenCV library
 #set(OpenCV_DIR "D:/VC_Lib/opencv/build")
