@@ -1,4 +1,4 @@
-src/CMakeLists.txt.user
-vc14/
-vc14_dll/
-vc12/
+/src/CMakeLists.txt.user
+/vc14/
+/vc14_dll/
+/vc12/
