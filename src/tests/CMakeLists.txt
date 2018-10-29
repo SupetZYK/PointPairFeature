@@ -20,9 +20,14 @@ add_executable(test_neiboriterator test_neiborIterator.cpp)
 target_link_libraries(test_neiboriterator zyk_ppf)
 
 add_executable(test_normal  test_normal_compute.cpp)
-target_link_libraries(test_normal ${PCL_LIBRARIES} zyk_ppf)
+target_link_libraries(test_normal ${PCL_LIBRARIES} pcl_utils)
 
+#if(cv_utils)
+message("CV_UTILS BUILD")
+add_executable(test_read_depth test_read_depth.cpp)
+target_link_libraries(test_read_depth ${PCL_LIBRARIES} pcl_utils cv_utils ${OpenCV_LIBS})
+#else()
+#	message("CV_UTILS NOT FOUND")
+#endif()
 
-#add_executable(test_read_depth test_read_depth.cpp)
-#target_link_libraries(test_read_depth ${PCL_LIBRARIES} rgbd zyk_ppf)
 

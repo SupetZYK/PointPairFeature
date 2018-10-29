@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+add_definitions(-std=c++11)
+aux_source_directory(.  pcl_utils_src)
+add_library(pcl_utils  SHARED ${pcl_utils_src})
+include_directories(.)
+target_link_libraries(pcl_utils ${PCL_LIBRARIES})

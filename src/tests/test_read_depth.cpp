@@ -1,11 +1,11 @@
 #include <string.h>
 #include <fstream>
 #include <string>
-#include <opencv2/rgbd.hpp>
+//#include <opencv2/rgbd.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-
+#include <cv_utils/cv_utils.h>
 #include <pcl/io/ply_io.h>
 #include <util_pcl.h>
 #include <pcl/visualization/pcl_visualizer.h>
@@ -65,7 +65,7 @@ void cv_depth_2_pcl_cloud(std::string depth_file_name, cv::Mat intrinsicK, pcl::
 		depth.convertTo(depth, CV_32F);
 	}
 	cv::Mat pc;
-	cv::rgbd::depthTo3d(depth, intrinsicK, pc);
+  cv::depthTo3d(depth, intrinsicK, pc);
 
 	cv_mat_cloud_to_pcl_cloud(pc, out);
 
