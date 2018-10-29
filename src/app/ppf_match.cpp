@@ -42,7 +42,9 @@ float max_vote_percentage (0.8);
 float second_distance_thresh(0.5);
 int num_clusters_per_group = 2;
 float show_vote_thresh (0.3);
-int max_show_number (10);
+int max_show_number (30);
+int n_angles(30);
+float icp_score_show_thresh(0.15);
 //iss
 //float iss_sr_ (6);
 //float iss_nr_ (4);
@@ -67,13 +69,14 @@ void showHelp (char *filename)
   std::cout << "     --tb:					Two ball switch" << std::endl;
   std::cout << "     --sppf:				Spread discretized ppf" << std::endl;
   std::cout << "     --mls val:				Moving least squares order, set to 0 to disable" << std::endl;
+  std::cout << "     --n_a val:				Number of angle bins, default 30(drost)" << std::endl;
   std::cout << "     --scene_ds val:        Scene uniform sampling radius (default same as model)" << std::endl;
   std::cout << "     --angle_thresh val:    angle thresh when do ppf clustering" << std::endl;
   std::cout << "     --dis_thresh val:		first distance thresh(relative to radius)" << std::endl;
-  std::cout << "     --para_1 val:			relative reference points number in ppf matching"<< std::endl;
-  std::cout << "     --para_2 val:			max vote thresh, relative to the number of points in the current box"<< std::endl;
-  std::cout << "     --para_3 val:			if the vote in the accumulator is greater than a certain thresh, then the instance is considered, this is the ratio of thresh to max_vote" << std::endl;
-  std::cout << "     --para_4 val:			Number of clusters per group.set to '-1' to close group" << std::endl;
+  std::cout << "     --rrpn val:			relative reference points number in ppf matching"<< std::endl;
+  std::cout << "     --mvt val:				max vote thresh, relative to the number of points in the current box"<< std::endl;
+  std::cout << "     --mvp val:			if the vote in the accumulator is greater than a certain thresh, then the instance is considered, this is the ratio of thresh to max_vote" << std::endl;
+  std::cout << "     --ncpg val:			Number of clusters per group.set to '-1' to close group" << std::endl;
   std::cout << "     --re_d val:			recompute score distance thresh, relative to model resolution.Set to '-1' to disable recompute score" << std::endl;
   std::cout << "     --re_a val:			recompute score angle thresh, Set to '-1' to disable using angle thresh" << std::endl;
   std::cout << "     --se_d val:			second distance thresh, for overlapping elimination(default 0.5)" << std::endl;
@@ -163,10 +166,10 @@ void parseCommandLine (int argc, char *argv[])
   pcl::console::parse_argument (argc, argv, "--scene_ds", scene_ds_);
   pcl::console::parse_argument (argc, argv, "--angle_thresh", angle_thresh);
   pcl::console::parse_argument (argc, argv, "--dis_thresh", cluster_dis_thresh);
-  pcl::console::parse_argument (argc, argv, "--para_1", relativeReferencePointsNumber);
-  pcl::console::parse_argument (argc, argv, "--para_2", max_vote_thresh);
-  pcl::console::parse_argument (argc, argv, "--para_3", max_vote_percentage);
-  pcl::console::parse_argument (argc, argv, "--para_4", num_clusters_per_group);
+  pcl::console::parse_argument (argc, argv, "--rrpn", relativeReferencePointsNumber);
+  pcl::console::parse_argument (argc, argv, "--mvt", max_vote_thresh);
+  pcl::console::parse_argument (argc, argv, "--mvp", max_vote_percentage);
+  pcl::console::parse_argument (argc, argv, "--ncpg", num_clusters_per_group);
   pcl::console::parse_argument (argc, argv, "--re_d", recopute_score_dis_thresh);
   pcl::console::parse_argument (argc, argv, "--re_a", recopute_score_ang_thresh);
   pcl::console::parse_argument (argc, argv, "--se_d", second_distance_thresh);
@@ -174,6 +177,7 @@ void parseCommandLine (int argc, char *argv[])
   pcl::console::parse_argument (argc, argv, "--icp_thresh", icp_dis_thresh);
   pcl::console::parse_argument(argc, argv, "--mls", mls_order);
   pcl::console::parse_argument(argc, argv, "--icp", icp_type);
+  pcl::console::parse_argument(argc, argv, "--n_a", n_angles);
 }
 
 
@@ -243,7 +247,7 @@ main(int argc, char *argv[])
 	std::cout << "Model length: " << model_length << std::endl;
 	std::cout << "Model width: " << model_width << std::endl;
 	std::cout << "Model height: " << model_height << std::endl;
-
+	std::cout << "Model number points: " << model_feature_space.getNumberPoints() << std::endl;
 	//compute original scene resolution
 	double original_scene_res = zyk::computeCloudResolution(scene);
 	std::cout << "Original scene resolution is: " << original_scene_res << std::endl;
@@ -289,7 +293,7 @@ main(int argc, char *argv[])
 			mls.setComputeNormals(true);
 			mls.setPolynomialOrder(mls_order);
 			mls.setSearchMethod(tree);
-			mls.setSearchRadius(2*model_feature_space.model_res);
+			mls.setSearchRadius(model_feature_space.model_res);
 			//mls.setSearchRadius(0.7*model_feature_space.model_res);
 			mls.process(*scene_keypoints);
 			scene_keyNormals = mls.getNormals();
@@ -371,6 +375,7 @@ main(int argc, char *argv[])
                               relativeReferencePointsNumber,
                               max_vote_thresh,
                               max_vote_percentage,
+							  n_angles,
                               angle_thresh,
                               cluster_dis_thresh,
                               recopute_score_dis_thresh,
@@ -520,14 +525,14 @@ main(int argc, char *argv[])
 				//
 				//check whether icp is needed
 				//
-				if (icp_type==1) {
-					refined_pose_clusters.clear();
-					model_feature_space.ICP_Refine(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res);
-				}
-				else if (icp_type == 2) {
-					refined_pose_clusters.clear();
-					model_feature_space.ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res, 6);
-				}
+				//if (icp_type==1) {
+				//	refined_pose_clusters.clear();
+				//	model_feature_space.ICP_Refine(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res);
+				//}
+				//else if (icp_type == 2) {
+				//	refined_pose_clusters.clear();
+				//	model_feature_space.ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res, 6);
+				//}
 				for (size_t i = 0; i < number; ++i)
 				{
 					if (pose_clusters[i].getVote() < show_vote_thresh)continue;
@@ -550,6 +555,8 @@ main(int argc, char *argv[])
 
 
 					if (icp_type>0) {
+						if (refined_pose_clusters[i].vote_count < icp_score_show_thresh)
+							continue;
 						pcl::PointCloud<PointType>::Ptr fine_rotated_model(new pcl::PointCloud<PointType>());
 						pcl::transformPointCloud(*model_keypoints, *fine_rotated_model, refined_pose_clusters[i].mean_transformation);
                         pcl::visualization::PointCloudColorHandlerCustom<PointType> fine_rotated_model_color_handler(fine_rotated_model, 0, 0, 255);
@@ -566,6 +573,7 @@ main(int argc, char *argv[])
 				cout << ">> c: change vote thresh" << endl;
 				cout << ">> n: change max show number" << endl;
 				cout << ">> i: enable icp" << endl;
+				cout << ">> C: change icp thresh" << endl;
 				scanf("  %c", &key);
 				if (key == 'q')
 					break;
@@ -583,6 +591,19 @@ main(int argc, char *argv[])
 				{
 					cout << "PLS input new icp type(1,2):" << endl;
 					scanf("  %d", &icp_type);
+					if (icp_type == 1) {
+						refined_pose_clusters.clear();
+						model_feature_space.ICP_Refine(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res);
+					}
+					else if (icp_type == 2) {
+						refined_pose_clusters.clear();
+						model_feature_space.ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res, 6);
+					}
+				}
+				if (key == 'C')
+				{
+					cout << "PLS input new thresh(0-1):" << endl;
+					scanf("  %f", &icp_score_show_thresh);
 				}
 				std::wcout << "icp type changed to " << icp_type << std::endl;
 				if (show_vote_thresh <= 0)show_vote_thresh = 0.1;

@@ -50,6 +50,7 @@ namespace zyk
 		////////////////////
         const string getName() const { return mName; }
         const double getMaxD() const { return max_p[3]; }
+		const int getNumberPoints() const {return input_point_cloud->size();}
     const double getSampleRatio() const { return model_res / (zyk::norm(model_size, 3)); }
 	public:
 		////////////////////
@@ -89,6 +90,7 @@ namespace zyk
                    float relativeReferencePointsNumber,
                    float max_vote_thresh,
                    float max_vote_percentage,
+					int n_angles, //drost use 30
                    float angle_thresh,
                    float first_dis_thresh,
                    float recompute_score_dis_thresh,
