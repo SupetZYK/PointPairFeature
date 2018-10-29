@@ -15,7 +15,7 @@
 //#define use_eigen
 #define use_neiboringIterator
 #define vote_flag_use_map
-//#define view_based
+#define view_based
 //#define plane_check
 namespace zyk
 {
