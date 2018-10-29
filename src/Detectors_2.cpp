@@ -251,6 +251,7 @@ bool CDetectors3D::findPart(const int objIdx)
 		DetectorParams.keypointerRatio, 
 		3, //max vote thresh
 		0.95, //max vote percentage
+		30, //number angle bins
 		0.15, //angle thresh
 		0.1, //first distance thresh
 		0.1, //recompute score distance thresh
@@ -352,6 +353,20 @@ void CDetectors3D::showMatchResults()
 		if (detectObjects[i]->p_PPF == NULL)
 			continue;
 		detectObjects[i]->p_PPF->getModelPointCloud(model_keypoints);
+		int color_r = 0, color_g = 0, color_b = 0;
+		if (detectObjects[i]->mDetectObjParams.ShowColor == "red")
+		{
+			color_r = 255;
+		}
+		else if (detectObjects[i]->mDetectObjParams.ShowColor == "blue")
+		{
+			color_b = 255;
+		}
+		else {
+			color_r = 255;
+			color_b = 255;
+		}
+		
 		//detectObjects[i].p_PPF->getPointNormalCloud(model_keyNormals);
 		matchResult& res = detectObjects[i]->result;
 		if (res.matchComplete)
@@ -368,7 +383,7 @@ void CDetectors3D::showMatchResults()
 				pcl::transformPointCloud(*model_keypoints, *rotated_model, transformation);
 				std::stringstream ss_cloud;
 				ss_cloud << detectObjects[i]->mDetectObjParams.ObjectName << "Result" << j;
-				pcl::visualization::PointCloudColorHandlerCustom<PointType> rotated_model_color_handler(rotated_model, 255, 0, 0);
+				pcl::visualization::PointCloudColorHandlerCustom<PointType> rotated_model_color_handler(rotated_model, color_r, color_g, color_b);
 				viewer.addPointCloud(rotated_model, rotated_model_color_handler, ss_cloud.str());
 				viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, ss_cloud.str());
 

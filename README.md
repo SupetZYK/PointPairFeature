@@ -1,7 +1,41 @@
 # PPF_Recognition
 
+#### Requirement
+
+- pcl 1.8
+- cmake
+
+#### Compile
+
+For successful compilation, you should make some change to pcl headers.
+
+- In "pcl\surface\include\pcl\surface\mls.h", uncomment "#if def _OPENMP #endif" or simply define "_OPENMP" in your project. 
+
+  In the same file, add the following public member function to class MovingLeastSquares.
+
+  ```c++
+  /** \brief Get the ptr of normals
+  */
+  inline NormalCloudPtr
+  getNormals() const { return (normals_); }
+  ```
 
 
-### 17 10 22
+- In "pcl\filters\include\pcl\filters\uniform_sampling.h", add the following public member function to class UniformSampling
 
-- ppf 离散化机制修改，角度以固定的最小值和最大值进行离散，而不是根据模型本身的min，和max进行离散，而距离的离散则要根据模型自身的size进行离散。模型的距离参数的min设为0，最大设成max+res
+  ```c++
+  IndicesPtr getSelectedIndex()
+  {
+      IndicesPtr select_index(new std::vector<int>);
+      select_index->resize(leaves_.size());
+      int cp = 0;
+      for (typename boost::unordered_map<size_t, Leaf>::const_iterator it = leaves_.begin(); it != leaves_.end(); ++it)
+          select_index->at(cp++) = it->second.idx;
+      return select_index;
+  };
+  ```
+
+You donnot need to recompile your pcl library after these modifications.
+
+### Change Log
+

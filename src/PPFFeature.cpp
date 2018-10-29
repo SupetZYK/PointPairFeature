@@ -837,7 +837,7 @@ float zyk::PPF_Space::computeClusterScore(pcl::PointCloud<PointType>::Ptr& scene
 
 
 
-void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, float second_dis_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& pose_clusters)
+void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointCloud<NormalType>::Ptr scene_normals,bool spread_ppf_switch, bool two_ball_switch, float relativeReferencePointsNumber,float max_vote_thresh, float max_vote_percentage, int n_angles, float angle_thresh, float first_dis_thresh, float recompute_score_dis_thresh, float recompute_score_ang_thresh, float second_dis_thresh, int num_clusters_per_group, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>& pose_clusters)
 {
 	std::cout << "match object: " << mName << std::endl;
 	int scene_steps = floor(1.0 / relativeReferencePointsNumber);
@@ -915,8 +915,8 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 			int reference_pnt_index = (*p_current_point_box)[cnt1];
 			/////////build an accumulator for this reference point
 			// in matlab the row size is size+1, why?
-			zyk::PPF_Accumulator small_acum(centered_point_cloud->size(), 30);
-            zyk::PPF_Accumulator big_acum(centered_point_cloud->size(), 30);
+			zyk::PPF_Accumulator small_acum(centered_point_cloud->size(), n_angles);
+            zyk::PPF_Accumulator big_acum(centered_point_cloud->size(), n_angles);
 #ifdef plane_check
             // 2018-3-14 by zyk add plane checker
             int plane_checker=0;
@@ -1010,9 +1010,9 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
 							float alpha = correspond_model_ppf.ppf.alpha_m - current_alpha;
 							if (alpha >= M_PI) alpha -= 2 * M_PI;
 							if (alpha < -M_PI)alpha += 2 * M_PI;
-							float alpha_bin = (alpha + M_PI) / 2 / M_PI * 30;
+							float alpha_bin = (alpha + M_PI) / 2 / M_PI * n_angles;
 							int middle_bin = int(alpha_bin + 0.5f);
-							if (middle_bin >= 30) middle_bin = 0;
+							if (middle_bin >= n_angles) middle_bin = 0;
 							//calculate vote_val
 							//float tmp = cos(correspond_model_ppf.ppf.f3);
 							//if (1 - tmp < 0.003)
