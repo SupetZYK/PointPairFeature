@@ -18,22 +18,13 @@ std::string model_filename_;
 std::string save_filename_;
 
 //Algorithm params
-//bool use_cloud_resolution_  (false);
-//bool use_ply_filetype_  (false);
-bool use_existing_normal_data_  (false);
-//bool x_centrosymmetric_  (false);
-//bool y_centrosymmetric_  (false);
-//bool z_centrosymmetric_  (false);
 bool save_sampled_cloud_ (false);
-bool normal_reorient_switch_ (false);
 bool smart_sample_border_ (false);
 bool show_original_model_ (false);
 //bool change_center_switch_(false);
-bool use_mls_ (false);
 float ang_degree_thresh (15);
 float model_ds_ (0.05f);
 float plane_ds_ (0.05f);
-float curvature_radius_ (0.05f);
 int angle_div_ (15);
 int distance_div_ (20);
 bool use_plane_flag_ (false);
@@ -45,26 +36,19 @@ void showHelp(char *filename)
 	std::cout << "*             Correspondence Grouping Tutorial - Usage Guide              *" << std::endl;
 	std::cout << "*                                                                         *" << std::endl;
 	std::cout << "***************************************************************************" << std::endl << std::endl;
-  std::cout << "Usage: "  << " ppf_train [Options]" << std::endl << std::endl;
+	std::cout << "Usage: "  << " ppf_train [Options]" << std::endl << std::endl;
 	std::cout << "Options:" << std::endl;
-  std::cout << "     -h:              Show this help." << std::endl;
-  std::cout << "     --mod val:       Path of the model CAD(ply/obj)." << std::endl;
-  std::cout << "     --out val:       Path of the output .ppfs file(if not specified, same as model)" << std::endl;
-	//std::cout << "     -r:						Compute the model cloud resolution and multiply" << std::endl;
-  std::cout << "     -w:              write the sampled model" << std::endl;
-	//std::cout << "     --ply:					Use .poly as input cloud. Default is .pcd" << std::endl;
-  std::cout << "     --rn:            Reorient switch!" << std::endl;
-  std::cout << "     --plf:           Plane feature flag." << std::endl;
-  std::cout << "     --cc:            Change Center switch!" << std::endl;
-  std::cout << "     --so:            show original model" << std::endl;
-  std::cout << "     --in:            Use existing normal files" << std::endl;
-  std::cout << "     --mls:           Use moving least squares" << std::endl;
-  std::cout << "     --sp val:        smart sampling, set angle_degree thresh" << std::endl;
-  std::cout << "     --model_ds val:  Model down sampling radtia (default 0.05)" << std::endl;
-  std::cout << "     --plane_ds val:  Model plane feature down sampling ratia, if not set, default same as model" << std::endl;
-  std::cout << "     --curv_r val:  	curvature radius" << std::endl;
-  std::cout << "     --a_div val: 		angle division" << std::endl;
-  std::cout << "     --d_div val:			distance division" << std::endl;
+	std::cout << "     -h:              Show this help." << std::endl;
+	std::cout << "     -mod val:       Path of the model CAD(ply/obj)." << std::endl;
+	std::cout << "     -out val:       Path of the output .ppfs file(if not specified, same as model)" << std::endl;
+	std::cout << "     -w:              write the sampled model" << std::endl;
+	std::cout << "     -plf:           Plane feature flag, use for planar parts." << std::endl;
+	std::cout << "     -so:            show original model" << std::endl;
+	std::cout << "     -sp val:        smart sampling, set angle_degree thresh" << std::endl;
+	std::cout << "     -model_ds val:  Model down sampling radtia (default 0.05)" << std::endl;
+	std::cout << "     -plane_ds val:  Model plane feature down sampling ratia, if not set, default same as model" << std::endl;
+	std::cout << "     -a_div val: 	 angle division" << std::endl;
+	std::cout << "     -d_div val:	 distance division" << std::endl;
 
 }
 
@@ -76,51 +60,25 @@ void parseCommandLine(int argc, char *argv[])
 		showHelp(argv[0]);
 		exit(0);
 	}
-
-	//Program behavior
-	//if (pcl::console::find_switch(argc, argv, "-r"))
-	//{
-	//	use_cloud_resolution_ = true;
-	//}
-//	if (pcl::console::find_switch(argc, argv, "-w"))
-//	{
-//		save_sampled_cloud_ = true;
-//	}
-  if (pcl::console::find_switch(argc, argv, "-w"))
-  {
-    save_sampled_cloud_ = true;
-  }
-	if (pcl::console::find_switch(argc, argv, "--rn"))
+	if (pcl::console::find_switch(argc, argv, "-w"))
 	{
-		normal_reorient_switch_ = true;
+		save_sampled_cloud_ = true;
 	}
-	if (pcl::console::find_switch(argc, argv, "--sp"))
+	if (pcl::console::find_switch(argc, argv, "-sp"))
 	{
 		smart_sample_border_= true;
 	}
-	if (pcl::console::find_switch(argc, argv, "--so"))
+	if (pcl::console::find_switch(argc, argv, "-so"))
 	{
 		show_original_model_ = true;
 	}
-	if (pcl::console::find_switch(argc, argv, "--in"))
-	{
-		use_existing_normal_data_ = true;
-	}
-	if (pcl::console::find_switch(argc, argv, "--mls"))
-	{
-		use_mls_ = true;
-	}
-    if (pcl::console::find_switch(argc, argv, "--plf"))
+    if (pcl::console::find_switch(argc, argv, "-plf"))
     {
         use_plane_flag_ = true;
     }
-//	if (pcl::console::find_switch(argc, argv, "--cc"))
-//	{
-//		change_center_switch_ = true;
-//	}
   //Model filename
-  pcl::console::parse_argument(argc, argv, "--mod", model_filename_);
-  pcl::console::parse_argument(argc, argv, "--out", save_filename_);
+  pcl::console::parse_argument(argc, argv, "-mod", model_filename_);
+  pcl::console::parse_argument(argc, argv, "-out", save_filename_);
   if(save_filename_.empty()){
     int pos = model_filename_.find_last_of('.');
     save_filename_ = model_filename_.substr(0, pos);
@@ -133,23 +91,75 @@ void parseCommandLine(int argc, char *argv[])
     }
   }
 	//General parameters
-	pcl::console::parse_argument(argc, argv, "--model_ds", model_ds_);
+	pcl::console::parse_argument(argc, argv, "-model_ds", model_ds_);
 	plane_ds_ = model_ds_;
-	pcl::console::parse_argument(argc, argv, "--plane_ds", plane_ds_);
-	pcl::console::parse_argument(argc, argv, "--curv_r", curvature_radius_);
-	pcl::console::parse_argument(argc, argv, "--sp", ang_degree_thresh);
-	pcl::console::parse_argument(argc, argv, "--a_div", angle_div_);
-	pcl::console::parse_argument(argc, argv, "--d_div", distance_div_);
+	pcl::console::parse_argument(argc, argv, "-plane_ds", plane_ds_);
+	pcl::console::parse_argument(argc, argv, "-sp", ang_degree_thresh);
+	pcl::console::parse_argument(argc, argv, "-a_div", angle_div_);
+	pcl::console::parse_argument(argc, argv, "-d_div", distance_div_);
 
 }
 
 
+void parseConfigFile(int argc, char*argv[])
+{
+	std::vector<int> filenames;
+	filenames = pcl::console::parse_file_extension_argument(argc, argv, ".config");
+	if (filenames.size() < 1)
+	{
+		//std::cout << REDTEXT("Config file name missing!.\n") << std::endl;
+		PCL_ERROR("Config file name missing!.\n");
+		exit(-1);
+	}
+	std::string config_file_name = argv[filenames[0]];
+	//std::cout << BLUETEXT("Parsing config file: ") << config_file_name << std::endl;
+	PCL_INFO("Parsing config file: %s", config_file_name);
+	std::ifstream file(config_file_name);
+	if (!file.is_open())
+	{
+		//std::cout << REDTEXT("Config file cannot open!.\n") << std::endl;
+		PCL_ERROR("Config file cannot open!.\n");
+		exit(-1);
+	}
+
+	std::vector<std::string> argVec;
+	std::string line;
+	std::vector<std::string> tokens;
+
+	while (true)
+	{
+		if (file.eof()) break;
+		std::getline(file, line);
+		if (line.length() == 0) continue; //empty line
+		if (line.at(0) == '#') continue; // comment
+		tokens = split(line);
+		if (tokens.empty()) continue;
+		if (tokens.size() == 1)
+			argVec.push_back("-" + tokens[0]);
+		else if (tokens.size() == 2)
+		{
+			argVec.push_back("-" + tokens[0]);
+			argVec.push_back(tokens[1]);
+		}
+	}
+	int new_argc = argVec.size() + 1;
+	char **new_argv = new char*[new_argc];
+	*new_argv = new char[strlen(argv[0]) + 1];
+	strcpy(*new_argv, argv[0]);
+	for (int i = 0; i < argVec.size(); ++i)
+	{
+		char *tmp = new char[argVec[i].size() + 1];
+		strcpy(tmp, argVec[i].c_str());
+		*(new_argv + i + 1) = tmp;
+	}
+	parseCommandLine(new_argc, new_argv);
+}
 
 bool isOnPlane(float x, float y, float z, Eigen::Vector4f& plane_param);
 int
 main(int argc, char *argv[])
 {
-	parseCommandLine(argc, argv);
+	parseConfigFile(argc, argv);
 
 	showHelp(argv[0]);
     pcl::PointCloud<pcl::PointNormal>::Ptr model(new pcl::PointCloud<pcl::PointNormal>());
@@ -291,7 +301,7 @@ main(int argc, char *argv[])
     zyk::PPF_Space model_feature_space;
   cout << "trained using angle_div , distance_div: " << angle_div_ << ", " << distance_div_ << endl;
 
-  model_feature_space.init(objName, input_points, input_normals, angle_div_ , distance_div_,true);
+  model_feature_space.init(objName, input_points, input_normals, angle_div_ , distance_div_,!use_plane_flag_);
 #ifdef plane_check
   if(use_plane_flag_)
       model_feature_space.setPlaneFlag(plane_flag);
@@ -319,6 +329,6 @@ main(int argc, char *argv[])
 
 bool isOnPlane(float x, float y, float z, Eigen::Vector4f& plane_param)
 {
-    Eigen::Vector4f p(x,y,z,1);
-    return abs(p.dot(plane_param))<0.0001;
+	Eigen::Vector4f p(x, y, z, 1);
+	return abs(p.dot(plane_param)) < 0.0001;
 }

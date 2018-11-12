@@ -1,4 +1,5 @@
 ﻿#include <util_pcl.h>
+#include <util.h>
 #include "PPFFeature.h"
 #include "pose_cluster.h"
 //pcl
@@ -8,6 +9,9 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/surface/mls.h>
 #include <pcl/common/transforms.h>
+
+
+
 using namespace pcl;
 //std::string model_filename_;
 std::string model_ppfs_filename_;
@@ -17,14 +21,16 @@ std::string scene_normal_filename_;
 
 //Algorithm params
 bool show_keypoints_ (false);
-bool show_correspondences_ (false);
+//bool show_correspondences_ (false);
 bool show_cluster_result_ (false);
 bool show_cluster_together_(false);
 bool spread_ppf_switch_ (false);
 bool two_ball_switch_ (false);
+bool use_weighted_vote_ (false);
 //bool use_ply_filetype_ (false);
 //bool use_iss_(false);
 bool use_existing_normal_data_ (false);
+bool omp_match_version_ (false);
 
 int icp_type  (-1);
 int mls_order (2);
@@ -36,15 +42,42 @@ float cluster_dis_thresh = 0.1;
 float recopute_score_dis_thresh = 0.05;
 float recopute_score_ang_thresh = -1;
 float relativeReferencePointsNumber = 0.2;
-float icp_dis_thresh=0.3;
+//float icp_dis_thresh=0.3;
 float max_vote_thresh (0.5);
 float max_vote_percentage (0.8);
-float second_distance_thresh(0.5);
+float max_overlap_ratio (0.5);
 int num_clusters_per_group = 2;
 float show_vote_thresh (0.3);
 int max_show_number (30);
 int n_angles(30);
-float icp_score_show_thresh(0.15);
+float icp_score_show_thresh (0.15);
+void averageQ(vector<Eigen::Quaternionf>& qvec,Eigen::Quaternionf& aveq)
+{
+	float w = 0, x = 0, y = 0, z = 0;
+	for (auto&q : qvec)
+	{
+		float tmpx = q.x(), tmpy = q.y(), tmpz = q.z(), tmpw = q.w();
+		if (tmpw > 0)
+		{
+			w += tmpw;
+			x += tmpx;
+			y += tmpy;
+			z += tmpz;
+		}
+		else
+		{
+			w -= tmpw;
+			x -= tmpx;
+			y -= tmpy;
+			z -= tmpz;
+		}
+	}
+	w /= qvec.size();
+	x /= qvec.size();
+	y /= qvec.size();
+	z /= qvec.size();
+	aveq = Eigen::Quaternionf(w, x, y, z);
+}
 //iss
 //float iss_sr_ (6);
 //float iss_nr_ (4);
@@ -57,32 +90,36 @@ void showHelp (char *filename)
   std::cout << "*             Correspondence Grouping Tutorial - Usage Guide              *" << std::endl;
   std::cout << "*                                                                         *" << std::endl;
   std::cout << "***************************************************************************" << std::endl << std::endl;
-  std::cout << "Options:" << std::endl;
-  std::cout << "     --mod [string]:        Input the model file name." << std::endl;
-  std::cout << "     --tar [string]:        Input the target cloud file name." << std::endl;
+  std::cout << "     -mod [string]:         Input the model file name." << std::endl;
+  std::cout << "     -tar [string]:         Input the target cloud file name." << std::endl;
   std::cout << "     -h:                    Show this help." << std::endl;
   std::cout << "     -k:                    Show used keypoints." << std::endl;
   std::cout << "     -c:                    Show used correspondences." << std::endl;
-  std::cout << "     --sc:                  Show cluster results" << std::endl;
-  std::cout << "     --st:                  Show cluster results together, only when 'sc' is input" << std::endl;
-  std::cout << "     --in:					Use existing normal files" << std::endl;
-  std::cout << "     --tb:					Two ball switch" << std::endl;
-  std::cout << "     --sppf:				Spread discretized ppf" << std::endl;
-  std::cout << "     --mls val:				Moving least squares order, set to 0 to disable" << std::endl;
-  std::cout << "     --n_a val:				Number of angle bins, default 30(drost)" << std::endl;
-  std::cout << "     --scene_ds val:        Scene uniform sampling radius (default same as model)" << std::endl;
-  std::cout << "     --angle_thresh val:    angle thresh when do ppf clustering" << std::endl;
-  std::cout << "     --dis_thresh val:		first distance thresh(relative to radius)" << std::endl;
-  std::cout << "     --rrpn val:			relative reference points number in ppf matching"<< std::endl;
-  std::cout << "     --mvt val:				max vote thresh, relative to the number of points in the current box"<< std::endl;
-  std::cout << "     --mvp val:			if the vote in the accumulator is greater than a certain thresh, then the instance is considered, this is the ratio of thresh to max_vote" << std::endl;
-  std::cout << "     --ncpg val:			Number of clusters per group.set to '-1' to close group" << std::endl;
-  std::cout << "     --re_d val:			recompute score distance thresh, relative to model resolution.Set to '-1' to disable recompute score" << std::endl;
-  std::cout << "     --re_a val:			recompute score angle thresh, Set to '-1' to disable using angle thresh" << std::endl;
-  std::cout << "     --se_d val:			second distance thresh, for overlapping elimination(default 0.5)" << std::endl;
-  std::cout << "     --show_thresh val:     the clusters whose vote is greater than this will be displayed" << std::endl;
-  std::cout << "     --icp val:				icp type(default -1 disabled)" << std::endl;
+  std::cout << "     -sc:                   Show cluster results" << std::endl;
+  std::cout << "     -st:                   Show cluster results together, only when 'sc' is input" << std::endl;
+  std::cout << "     -in:					Use existing normal files" << std::endl;
+  std::cout << "     -tb:					Two ball switch" << std::endl;
+  std::cout << "     -omp:					Use omp match version" << std::endl;
+  std::cout << "     -sppf:					Spread discretized ppf" << std::endl;
+  std::cout << "     -weight_vote:			use weighted vote" << std::endl;
+  std::cout << "     -mls val:				Moving least squares order, set to 0 to disable" << std::endl;
+  std::cout << "     -n_a val:				Number of angle bins, default 30(drost)" << std::endl;
+  std::cout << "     -scene_ds val:         Scene uniform sampling radius (default same as model)" << std::endl;
+  std::cout << "     -angle_thresh val:     angle thresh when do ppf clustering" << std::endl;
+  std::cout << "     -dis_thresh val:		first distance thresh(relative to radius)" << std::endl;
+  std::cout << "     -rrpn val:				relative reference points number in ppf matching"<< std::endl;
+  std::cout << "     -mvt val:				max vote thresh"<< std::endl;
+  std::cout << "     -mvp val:				if the vote in the accumulator is greater than a certain thresh, then the instance is considered, this is the ratio of thresh to max_vote" << std::endl;
+  std::cout << "     -ncpg val:				Number of clusters per group.set to '-1' to close group" << std::endl;
+  std::cout << "     -re_d val:				recompute score distance thresh, relative to model resolution.Set to '-1' to disable recompute score" << std::endl;
+  std::cout << "     -re_a val:				recompute score angle thresh, Set to '-1' to disable using angle thresh" << std::endl;
+  std::cout << "     -mov val:				max overlap ratio, for overlapping elimination(default 0.5)" << std::endl;
+  std::cout << "     -show_thresh val:		the clusters whose vote is greater than this will be displayed" << std::endl;
+  std::cout << "     -icp val:				icp type(default -1 disabled)" << std::endl;
+  std::cout << "     -icp_thresh val:		icp show thresh" << std::endl;
 }
+
+
 
 void parseCommandLine (int argc, char *argv[])
 {
@@ -98,37 +135,45 @@ void parseCommandLine (int argc, char *argv[])
   {
     show_keypoints_ = true;
   }
-  if (pcl::console::find_switch (argc, argv, "-c"))
-  {
-    show_correspondences_ = true;
-  }
+  //if (pcl::console::find_switch (argc, argv, "-c"))
+  //{
+  //  show_correspondences_ = true;
+  //}
   //if (pcl::console::find_switch (argc, argv, "-r"))
   //{
   //  use_cloud_resolution_ = true;
   //}
-  if (pcl::console::find_switch (argc, argv, "--sc"))
+  if (pcl::console::find_switch (argc, argv, "-sc"))
   {
     show_cluster_result_ = true;
   }
-  if (pcl::console::find_switch(argc, argv, "--st"))
+  if (pcl::console::find_switch(argc, argv, "-st"))
   {
 	  show_cluster_together_ = true;
   }
-  if (pcl::console::find_switch(argc, argv, "--in"))
+  if (pcl::console::find_switch(argc, argv, "-in"))
   {
 	  use_existing_normal_data_ = true;
   }
-  //if (pcl::console::find_switch(argc, argv, "--mls"))
+  //if (pcl::console::find_switch(argc, argv, "-mls"))
   //{
 	 // use_mls_ = true;
   //}
-  if (pcl::console::find_switch(argc, argv, "--tb"))
+  if (pcl::console::find_switch(argc, argv, "-tb"))
   {
 	  two_ball_switch_ = true;
   }
-  if (pcl::console::find_switch(argc, argv, "--sppf"))
+  if (pcl::console::find_switch(argc, argv, "-sppf"))
   {
 	  spread_ppf_switch_ = true;
+  }
+  if (pcl::console::find_switch(argc, argv, "-weight_vote"))
+  {
+	  use_weighted_vote_ = true;
+  }
+  if (pcl::console::find_switch(argc, argv, "-omp"))
+  {
+	  omp_match_version_ = true;
   }
 #if 0 //older prompt style
   std::vector<int> filenames;
@@ -153,8 +198,8 @@ void parseCommandLine (int argc, char *argv[])
 	scene_filename_ = argv[filenames[0]];
 	cout << "Input scene file: " << scene_filename_ << endl;
 #else // new prompt style
-  pcl::console::parse_argument(argc, argv, "--mod", model_ppfs_filename_);
-  pcl::console::parse_argument(argc, argv, "--tar", scene_filename_);
+  pcl::console::parse_argument(argc, argv, "-mod", model_ppfs_filename_);
+  pcl::console::parse_argument(argc, argv, "-tar", scene_filename_);
   if (model_ppfs_filename_.empty() || scene_filename_.empty()) {
 	  std::cout << "Two few files input!" << std::endl;
 	  system("pause");
@@ -163,34 +208,86 @@ void parseCommandLine (int argc, char *argv[])
 #endif
   //General parameters
   //pcl::console::parse_argument (argc, argv, "--model_ss", model_ss_);
-  pcl::console::parse_argument (argc, argv, "--scene_ds", scene_ds_);
-  pcl::console::parse_argument (argc, argv, "--angle_thresh", angle_thresh);
-  pcl::console::parse_argument (argc, argv, "--dis_thresh", cluster_dis_thresh);
-  pcl::console::parse_argument (argc, argv, "--rrpn", relativeReferencePointsNumber);
-  pcl::console::parse_argument (argc, argv, "--mvt", max_vote_thresh);
-  pcl::console::parse_argument (argc, argv, "--mvp", max_vote_percentage);
-  pcl::console::parse_argument (argc, argv, "--ncpg", num_clusters_per_group);
-  pcl::console::parse_argument (argc, argv, "--re_d", recopute_score_dis_thresh);
-  pcl::console::parse_argument (argc, argv, "--re_a", recopute_score_ang_thresh);
-  pcl::console::parse_argument (argc, argv, "--se_d", second_distance_thresh);
-  pcl::console::parse_argument (argc, argv, "--show_thresh", show_vote_thresh);
-  pcl::console::parse_argument (argc, argv, "--icp_thresh", icp_dis_thresh);
-  pcl::console::parse_argument(argc, argv, "--mls", mls_order);
-  pcl::console::parse_argument(argc, argv, "--icp", icp_type);
-  pcl::console::parse_argument(argc, argv, "--n_a", n_angles);
+  pcl::console::parse_argument (argc, argv, "-scene_ds", scene_ds_);
+  pcl::console::parse_argument (argc, argv, "-angle_thresh", angle_thresh);
+  pcl::console::parse_argument (argc, argv, "-dis_thresh", cluster_dis_thresh);
+  pcl::console::parse_argument (argc, argv, "-rrpn", relativeReferencePointsNumber);
+  pcl::console::parse_argument (argc, argv, "-mvt", max_vote_thresh);
+  pcl::console::parse_argument (argc, argv, "-mvp", max_vote_percentage);
+  pcl::console::parse_argument (argc, argv, "-ncpg", num_clusters_per_group);
+  pcl::console::parse_argument (argc, argv, "-re_d", recopute_score_dis_thresh);
+  pcl::console::parse_argument (argc, argv, "-re_a", recopute_score_ang_thresh);
+  pcl::console::parse_argument (argc, argv, "-mov", max_overlap_ratio);
+  pcl::console::parse_argument (argc, argv, "-show_thresh", show_vote_thresh);
+  pcl::console::parse_argument (argc, argv, "-icp_thresh", icp_score_show_thresh);
+  pcl::console::parse_argument(argc, argv, "-mls", mls_order);
+  pcl::console::parse_argument(argc, argv, "-icp", icp_type);
+  pcl::console::parse_argument(argc, argv, "-n_a", n_angles);
 }
 
 
+void parseConfigFile(int argc, char*argv[])
+{
+	std::vector<int> filenames;
+	filenames = pcl::console::parse_file_extension_argument(argc, argv, ".config");
+	if (filenames.size() < 1)
+	{
+		//std::cout << REDTEXT("Config file name missing!.\n") << std::endl;
+		std::cout <<"Config file name missing!.\n" << std::endl;
+		exit(-1);
+	}
+	std::string config_file_name = argv[filenames[0]];
+	//std::cout << BLUETEXT("Parsing config file: ") << config_file_name << std::endl;
+	std::cout << "Parsing config file: "<< config_file_name << std::endl;
+	std::ifstream file(config_file_name);
+	if (!file.is_open())
+	{
+		//std::cout << REDTEXT("Config file cannot open!.\n") << std::endl;
+		std::cout << "Config file cannot open!.\n" << std::endl;
+		exit(-1);
+	}
 
+	std::vector<std::string> argVec;
+	std::string line;
+	std::vector<std::string> tokens;
+
+	while (true)
+	{
+		if (file.eof()) break;
+		std::getline(file, line);
+		if (line.length() == 0) continue; //empty line
+		if (line.at(0) == '#') continue; // comment
+		tokens = split(line);
+		if (tokens.empty()) continue;
+		if (tokens.size() == 1)
+			argVec.push_back("-" + tokens[0]);
+		else if (tokens.size() == 2)
+		{
+			argVec.push_back("-" + tokens[0]);
+			argVec.push_back(tokens[1]);
+		}
+	}
+	int new_argc = argVec.size()+1;
+	char **new_argv = new char*[new_argc];
+	*new_argv = new char[strlen(argv[0]) + 1];
+	strcpy(*new_argv, argv[0]);
+	for (int i = 0; i < argVec.size(); ++i)
+	{
+		char *tmp = new char[argVec[i].size()+1];
+		strcpy(tmp, argVec[i].c_str());
+		*(new_argv + i+1) = tmp;
+	}
+	parseCommandLine(new_argc, new_argv);
+}
 
 
 int
 main(int argc, char *argv[])
 {
 
-	parseCommandLine(argc, argv);
-
-	showHelp(argv[0]);
+	//parseCommandLine(argc, argv);
+	parseConfigFile(argc, argv);
+	//showHelp(argv[0]);
 	//pcl::PointCloud<PointType>::Ptr model(new pcl::PointCloud<PointType>());
 	pcl::PointCloud<PointType>::Ptr model_keypoints(new pcl::PointCloud<PointType>());
 	pcl::PointCloud<PointType>::Ptr scene(new pcl::PointCloud<PointType>());
@@ -201,7 +298,15 @@ main(int argc, char *argv[])
 
 	if (use_existing_normal_data_) {
 		if (!zyk::readPointCloud(scene_filename_, scene, scene_normals))
+		{
 			return(-1);
+		}
+		// check normals
+		if (scene_normals->empty())
+		{
+			PCL_WARN("Normals are empty, but 'use_existing_normal_data_' are set! Check if the input cloud have normal data. Now,reset it to false");
+			use_existing_normal_data_ = false;
+		}
 	}
 	else {
 		if (!zyk::readPointCloud(scene_filename_, scene))
@@ -247,6 +352,7 @@ main(int argc, char *argv[])
 	std::cout << "Model length: " << model_length << std::endl;
 	std::cout << "Model width: " << model_width << std::endl;
 	std::cout << "Model height: " << model_height << std::endl;
+	std::cout << "Model diameter: " << model_feature_space.getDiameter() << std::endl;
 	std::cout << "Model number points: " << model_feature_space.getNumberPoints() << std::endl;
 	//compute original scene resolution
 	double original_scene_res = zyk::computeCloudResolution(scene);
@@ -255,7 +361,7 @@ main(int argc, char *argv[])
 	if (scene_ds_ < 0)
 		scene_ss_ = model_feature_space.model_res;
 	else
-		scene_ss_ *= (scene_ds_/model_feature_space.getSampleRatio())*model_feature_space.model_res;
+		scene_ss_ = scene_ds_ * model_feature_space.getDiameter();
 	cout << "Scene sampling resolution is: " << scene_ss_ << endl;
 	
 	//
@@ -278,6 +384,7 @@ main(int argc, char *argv[])
 		{
 			pcl::NormalEstimationOMP<PointType, NormalType> norm_est;
 			norm_est.setIndices(sampled_index_ptr);
+			norm_est.setNumberOfThreads(8);
 			//norm_est.setKSearch(20);
 			norm_est.setRadiusSearch(model_feature_space.model_res);
 			norm_est.setInputCloud(scene);
@@ -288,6 +395,7 @@ main(int argc, char *argv[])
 			MovingLeastSquaresOMP<PointType, PointType> mls;
 			search::KdTree<PointType>::Ptr tree;
 			// Set parameters
+			mls.setNumberOfThreads(8);
 			mls.setInputCloud(scene);
 			mls.setIndices(sampled_index_ptr);
 			mls.setComputeNormals(true);
@@ -349,7 +457,7 @@ main(int argc, char *argv[])
 	cout <<">max_vote_percentage: "<<max_vote_percentage<<endl;
 	cout <<">recompute score distance thresh: " << recopute_score_dis_thresh << endl;
 	cout << ">recompute score angle thresh: " << recopute_score_ang_thresh << endl;
-	cout << "second distance thresh: " << second_distance_thresh << endl;
+	cout << "second distance thresh: " << max_overlap_ratio << endl;
 	cout << "num clusters per group: " << num_clusters_per_group << endl;
 #ifdef plane_check
 //    vector<vector<float> > plane_features(6,vector<float>(4,0.0));
@@ -368,21 +476,40 @@ main(int argc, char *argv[])
     model_feature_space.plane_vote_thresh=2;
 #endif
     int start_time=clock();
-    model_feature_space.match(scene_keypoints,
-                              scene_keyNormals,
-                              spread_ppf_switch_,
-                              two_ball_switch_,
-                              relativeReferencePointsNumber,
-                              max_vote_thresh,
-                              max_vote_percentage,
-							  n_angles,
-                              angle_thresh,
-                              cluster_dis_thresh,
-                              recopute_score_dis_thresh,
-                              recopute_score_ang_thresh,
-                              second_distance_thresh,
-                              num_clusters_per_group,
-                              pose_clusters);
+	if (omp_match_version_)
+		model_feature_space.match_v2(scene_keypoints,
+			scene_keyNormals,
+			spread_ppf_switch_,
+			two_ball_switch_,
+			use_weighted_vote_,
+			relativeReferencePointsNumber,
+			max_vote_thresh,
+			max_vote_percentage,
+			n_angles,
+			angle_thresh,
+			cluster_dis_thresh,
+			recopute_score_dis_thresh,
+			recopute_score_ang_thresh,
+			max_overlap_ratio,
+			num_clusters_per_group,
+			pose_clusters);
+	else
+		model_feature_space.match(scene_keypoints,
+			scene_keyNormals,
+			spread_ppf_switch_,
+			two_ball_switch_,
+			use_weighted_vote_,
+			relativeReferencePointsNumber,
+			max_vote_thresh,
+			max_vote_percentage,
+			n_angles,
+			angle_thresh,
+			cluster_dis_thresh,
+			recopute_score_dis_thresh,
+			recopute_score_ang_thresh,
+			max_overlap_ratio,
+			num_clusters_per_group,
+			pose_clusters);
   int end_time=clock();
   std::cout<<"Time used: "<<(end_time-start_time)/1000.0<<"(s)"<<std::endl;
 	if(num_clusters_per_group<0)
@@ -451,6 +578,7 @@ main(int argc, char *argv[])
 				//vector<Eigen::Vector3f> tmp_rot_vec;
 				//Eigen::Vector3f tmp_mean_rot_axis;
 				//tmp_mean_rot_axis.setZero();
+				vector<Eigen::Quaternionf> qvec;
 				for (int j = 0; j < pose_clusters[i].size(); j++)
 				{
 					cout << pose_clusters[i].transformations[j].matrix() << endl;
@@ -468,9 +596,12 @@ main(int argc, char *argv[])
 					cout << "Rot:" << tmp_angle_axis.transpose() << endl;
 					Eigen::Quaternionf q(pose_clusters[i].transformations[j].rotation());
 					cout << "Quatanion: " << q.w() <<" "<<q.vec().transpose()<< endl;
+					qvec.push_back(q);
 					//tmp_mean_rot_axis+=tmp_angle_axis;
 				}
-
+				Eigen::Quaternionf qmean;
+				averageQ(qvec, qmean);
+				cout << "Quatanion mean: " << qmean.w() << " "<<qmean.vec().transpose() << endl;
 				//Eigen::Vector3f tmp_mean_rot_axis;
 				//for(int j=0;j<tmp_rot_vec.size();j++)
 				//{
@@ -573,7 +704,7 @@ main(int argc, char *argv[])
 				cout << ">> c: change vote thresh" << endl;
 				cout << ">> n: change max show number" << endl;
 				cout << ">> i: enable icp" << endl;
-				cout << ">> C: change icp thresh" << endl;
+				cout << ">> C: change icp show thresh" << endl;
 				scanf("  %c", &key);
 				if (key == 'q')
 					break;

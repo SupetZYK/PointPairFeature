@@ -224,7 +224,7 @@ namespace pcl
 			if (res){
 				leaf.push_back((*indices_)[cp]);
 				output.points.push_back(input_->points[(*indices_)[cp]]);
-        selected_indices_->push_back((*indices_)[cp]);
+				selected_indices_->push_back((*indices_)[cp]);
 				count++;
 			}
 		}

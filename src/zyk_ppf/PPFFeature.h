@@ -15,7 +15,7 @@
 //#define use_eigen
 #define use_neiboringIterator
 #define vote_flag_use_map
-#define view_based
+//#define view_based
 //#define plane_check
 namespace zyk
 {
@@ -24,7 +24,8 @@ namespace zyk
 		int first_index;
 		int second_index;
 		pcl::PPFSignature ppf;
-		float weight = 1;
+		float weight;
+		PPF() :weight(1.0),first_index(-1),second_index(-1) {};
 	};
 
 	struct PPF_Accumulator
@@ -49,7 +50,8 @@ namespace zyk
 		////// property access
 		////////////////////
         const string getName() const { return mName; }
-        const double getMaxD() const { return max_p[3]; }
+        const double getMaxPPFD() const { return max_p[3]; }
+		double getDiameter() const { return zyk::norm(model_size, 3); }
 		const int getNumberPoints() const {return input_point_cloud->size();}
     const double getSampleRatio() const { return model_res / (zyk::norm(model_size, 3)); }
 	public:
@@ -87,6 +89,7 @@ namespace zyk
                    pcl::PointCloud<NormalType>::Ptr scene_normals,
                    bool spread_ppf_switch,
                    bool two_ball_switch,
+					bool use_weighted_vote,
                    float relativeReferencePointsNumber,
                    float max_vote_thresh,
                    float max_vote_percentage,
@@ -95,9 +98,25 @@ namespace zyk
                    float first_dis_thresh,
                    float recompute_score_dis_thresh,
                    float recompute_score_ang_thresh,
-                   float second_dis_thresh,
+                   float max_overlap_ratio,
                    int num_clusters_per_group,
                    vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> >& pose_clusters);
+		void match_v2(pcl::PointCloud<PointType>::Ptr scene,
+						pcl::PointCloud<NormalType>::Ptr scene_normals,
+						bool spread_ppf_switch,
+						bool two_ball_switch,
+						bool use_weighted_vote,
+						float relativeReferencePointsNumber,
+						float max_vote_thresh,
+						float max_vote_percentage,
+						int n_angles, //drost use 30
+						float angle_thresh,
+						float first_dis_thresh,
+						float recompute_score_dis_thresh,
+						float recompute_score_ang_thresh,
+						float max_overlap_ratio,
+						int num_clusters_per_group,
+						vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> >& pose_clusters);
 #ifdef plane_check
         //plane checker test 2018-3-14
         void setPlaneFlag(std::vector<bool >& flag){plane_flag=flag;ver_=3;}
@@ -132,7 +151,8 @@ namespace zyk
 		BOOST_SERIALIZATION_SPLIT_MEMBER()
 
 		/////////////METHODS
-        void recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &pose_clusters);
+		void recomputeClusterScore(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &pose_clusters);
+		void recomputeClusterScore_v2(zyk::CVoxel_grid& grid, pcl::PointCloud<NormalType>& scene_normals, float dis_thresh, float ang_thresh, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster> > &pose_clusters);
 		bool computeAllPPF();
 #ifdef view_based
     bool computeALL_Visible_PPF(std::vector<std::vector<int> >&view_based_indexes);

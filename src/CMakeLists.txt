@@ -27,31 +27,38 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-# add common utils
+################ add common utils
 aux_source_directory(common_utils common_utils_src)
 add_library(common_utils SHARED ${common_utils_src})
 include_directories(common_utils)
 
-# add pcl utils
-add_subdirectory(pcl_utils)
-# aux_source_directory(pcl_utils pcl_utils_src)
-# add_library(pcl_utils SHARED ${pcl_utils_src})
-# target_link_libraries(pcl_utils common_utils ${PCL_LIBRARIES})
+################ add pcl utils
+aux_source_directory(pcl_utils pcl_utils_src)
+add_library(pcl_utils SHARED ${pcl_utils_src})
+target_link_libraries(pcl_utils common_utils ${PCL_LIBRARIES})
 include_directories(pcl_utils)
 
-# add zyk ppf lib
+################ add zyk ppf lib
 aux_source_directory(zyk_ppf zyk_ppf_src)
 add_library(zyk_ppf SHARED ${zyk_ppf_src})
 target_link_libraries(zyk_ppf ${PCL_LIBRARIES} pcl_utils common_utils)
 include_directories(zyk_ppf)
 
-# #python bindings
-# aux_source_directory(./python/  zyk_ppf_python_src)
-# add_library(zyk_ppf_python SHARED ${zyk_ppf_python_src})
-INCLUDE_DIRECTORIES(.)
-#cv utils
-add_subdirectory(cv_utils)
-
+################cv utils
+set(OpenCV_DIR "D:/VC_Lib/opencv/build")
+option(OpenCV_STATIC OFF)
+find_package(OpenCV 3)
+if (${OpenCV_FOUND})
+    message("Found OpenCV in ${OpenCV_INCLUDE_DIRS}")
+    include_directories(${OpenCV_INCLUDE_DIRS})
+    add_definitions(-DCVAPI_EXPORTS)
+    aux_source_directory(cv_utils  cv_utils_src)
+    add_library(cv_utils  SHARED ${cv_utils_src})
+    target_link_libraries(cv_utils ${OpenCV_LIBS})
+    include_directories(cv_utils)
+else()
+    message("OpenCV NOT FOUND!")
+endif()
 #apps and tools
 add_subdirectory(app)
 add_subdirectory(tests)

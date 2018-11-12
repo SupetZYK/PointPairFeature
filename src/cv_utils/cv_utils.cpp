@@ -34,6 +34,7 @@
  */
 
 #include "cv_utils.hpp"
+#include <opencv2/calib3d.hpp>
 namespace cv
 {
   /**
@@ -76,6 +77,7 @@ namespace cv
     coordinates[1] = (v_mat - cy).mul(z_mat) * (1. / fy);
     coordinates[2] = z_mat;
     cv::merge(coordinates, points3d);
+	
   }
 
   /**

@@ -248,8 +248,9 @@ bool CDetectors3D::findPart(const int objIdx)
 		scene_keyNormals, 
 		false, //spread ppf switch
 		true, //two ball switch
+		true, //use weighted vote
 		DetectorParams.keypointerRatio, 
-		3, //max vote thresh
+		4, //max vote thresh
 		0.95, //max vote percentage
 		30, //number angle bins
 		0.15, //angle thresh

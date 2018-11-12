@@ -31,7 +31,7 @@ int main(int argc, char**argv) {
 	CDetectModel3D::detectObjParams params;
 	params.ObjectName = "plat";
 	params.ShowColor = "red";
-	params.downSampleRatio = 0.05;
+	params.downSampleRatio = 0.06;
 	params.MaxOverlapDistRel = 0.5;
 	params.minScore = 0.18;
 	params.mlsOrder = 2;
@@ -41,16 +41,16 @@ int main(int argc, char**argv) {
 	CDetectModel3D* model = detectors.readSurfaceModel(surface_model_file);
 	model->mDetectObjParams = params;
 
-	CDetectModel3D* model2 = detectors.readSurfaceModel("../../../datafile/pipe.ppfs");
-	params.minScore = 0.15;
-	params.ObjectName = "pipe";
-	params.ShowColor = "blue";
-	params.mlsOrder = 1;
-	model2->mDetectObjParams = params;
+	//CDetectModel3D* model2 = detectors.readSurfaceModel("../../../datafile/pipe.ppfs");
+	//params.minScore = 0.15;
+	//params.ObjectName = "pipe";
+	//params.ShowColor = "blue";
+	//params.mlsOrder = 1;
+	//model2->mDetectObjParams = params;
 
 
 	detectors.findParts();
-	const CDetectModel3D::matchResult&res = model2->getMatchResult();
+	const CDetectModel3D::matchResult&res = model->getMatchResult();
 	detectors.showMatchResults();
 	std::cout << "Time Used: " << res.matchTime << " s, ICP time: " <<res.icpTime<<" s"<< std::endl;
 	system("pause");

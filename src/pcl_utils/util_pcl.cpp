@@ -479,6 +479,12 @@ bool zyk::mesh_sampling(std::string file_path, size_t n_samples, pcl::PointCloud
     readerQuery->Update ();
     polydata1 = readerQuery->GetOutput ();
   }
+  else if (file_path.find(".stl") != string::npos)
+  {
+	  pcl::PolygonMesh mesh;
+	  pcl::io::loadPolygonFileSTL(file_path, mesh);
+	  pcl::io::mesh2vtk(mesh, polydata1);
+  }
   else
   {
     return false;
