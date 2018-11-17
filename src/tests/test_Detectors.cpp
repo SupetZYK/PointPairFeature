@@ -31,11 +31,11 @@ int main(int argc, char**argv) {
 	CDetectModel3D::detectObjParams params;
 	params.ObjectName = "plat";
 	params.ShowColor = "red";
-	params.downSampleRatio = 0.06;
+	params.downSampleRatio = 0.05;
 	params.MaxOverlapDistRel = 0.5;
-	params.minScore = 0.18;
+	params.minScore = 0.2;
 	params.mlsOrder = 2;
-	params.param_1 = 5;
+	params.icp_type = 1;
 	detectors.readScene(scene_file);
 	detectors.DetectorParams.matchMaxNum = 20;
 	CDetectModel3D* model = detectors.readSurfaceModel(surface_model_file);

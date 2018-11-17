@@ -449,30 +449,33 @@ void zyk::PPF_Space::ICP_Refine(pcl::PointCloud<PointType>::Ptr scene, const vec
 		max_number = 10;
 	max_number = std::min(max_number, int(coarse_pose_clusters.size()));
 	
+	if (scene_res < 0) {
+		// scene_res is not provided, should calculate the scene resolution
+		scene_res = computeCloudResolution(scene);
+	}
+	float final_dis = scene_res*1.414 + 0.05;
 	if (max_dis < 0) {
 		//auto calculate the max_dis;
-		if (scene_res < 0) {
-			// scene_res is not provided, should calculate the scene resolution
-			scene_res = computeCloudResolution(scene);
-		}
-		max_dis = scene_res*1.414 + 0.05;
+		max_dis = 5 * scene_res;
 		//std::cout << "ICP max distance computed: " << max_dis << std::endl;
 	}
-	pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<PointType>::Ptr icp_res(new pcl::PointCloud<PointType>());
-	pcl::IterativeClosestPoint<PointType, PointType> icp;
-	icp.setMaximumIterations(100);
-	icp.setInputTarget(scene);
-	icp.setTransformationEpsilon(1e-10);
-	icp.setEuclideanFitnessEpsilon(0.001);
-	icp.setMaxCorrespondenceDistance(max_dis);
-	for (size_t i = 0; i < max_number; ++i) {
+
+#pragma omp parallel for num_threads(8)
+	for (int i = 0; i < max_number; ++i) {
+		pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
+		pcl::PointCloud<PointType>::Ptr icp_res(new pcl::PointCloud<PointType>());
+		pcl::IterativeClosestPoint<PointType, PointType> icp;
+		icp.setMaximumIterations(100);
+		icp.setInputTarget(scene);
+		icp.setTransformationEpsilon(1e-10);
+		icp.setEuclideanFitnessEpsilon(0.001);
+		icp.setMaxCorrespondenceDistance(max_dis);
 		pcl::transformPointCloud(*input_point_cloud, *rotated_model, coarse_pose_clusters[i].mean_transformation);
 		icp.setInputSource(rotated_model);
 		icp.align(*icp_res);
 		//calculate icp scores
 		double score = 0;
-		double thresh = max_dis*max_dis;
+		double thresh = final_dis*final_dis;
 		for (int j = 0; j < icp.correspondences_->size(); ++j)
 		{
 			if (icp.correspondences_->at(j).distance <= thresh)
@@ -488,7 +491,7 @@ void zyk::PPF_Space::ICP_Refine(pcl::PointCloud<PointType>::Ptr scene, const vec
 	//std::sort(pose_clusters_out.begin(), pose_clusters_out.end(), zyk::pose_cluster_comp);
 }
 
-void zyk::PPF_Space::ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &coarse_pose_clusters, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters_out, int max_number, double scene_res /*= -1.0*/, double max_dis /*= -1.0*/)
+void zyk::PPF_Space::ICP_Refine1_0(pcl::PointCloud<PointType>::Ptr scene, const vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &coarse_pose_clusters, vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> &pose_clusters_out, int max_number, double scene_res /*= -1.0*/, double max_dis /*= -1.0*/)
 {
 	std::cout << "Start ICP..." << std::endl;
 	int time1 = clock();
@@ -504,21 +507,25 @@ void zyk::PPF_Space::ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const 
 	float final_dis = scene_res*1.414 + 0.05;
 	//std::cout << "ICP max distance computed: " << final_dis << std::endl;
 	if (max_dis < 0) {
-		max_dis = 4 * max_dis;
+		max_dis = 5 * final_dis;
 	}
-	pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
-	pcl::PointCloud<PointType>::Ptr icp_res(new pcl::PointCloud<PointType>());
-	pcl::IterativeClosestPoint<PointType, PointType> icp;
-	icp.setMaximumIterations(100);
-	icp.setInputTarget(scene);
-	icp.setTransformationEpsilon(1e-10);
-	icp.setEuclideanFitnessEpsilon(0.001);
-	for (size_t i = 0; i < max_number; ++i) {
+	pose_clusters_out = vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>>(max_number);
+#pragma omp parallel for num_threads(8)
+	for (int i = 0; i < max_number; ++i) {
+		pcl::PointCloud<PointType>::Ptr rotated_model(new pcl::PointCloud<PointType>());
+		pcl::PointCloud<PointType>::Ptr icp_res(new pcl::PointCloud<PointType>());
+		pcl::IterativeClosestPoint<PointType, PointType> icp;
+		icp.setInputTarget(scene);
+		icp.setTransformationEpsilon(1e-10);
+		icp.setEuclideanFitnessEpsilon(0.001);
+		
 		pcl::transformPointCloud(*input_point_cloud, *rotated_model, coarse_pose_clusters[i].mean_transformation);
+		icp.setMaximumIterations(20);
 		icp.setMaxCorrespondenceDistance(max_dis);
 		icp.setInputSource(rotated_model);
 		icp.align(*icp_res);
 		icp.setMaxCorrespondenceDistance(final_dis);
+		icp.setMaximumIterations(20);
 		icp_res->clear();
 		icp.align(*icp_res,icp.getFinalTransformation());
 		//calculate icp scores
@@ -533,7 +540,7 @@ void zyk::PPF_Space::ICP_Refine2_0(pcl::PointCloud<PointType>::Ptr scene, const 
 			}
 		}
 		score /= centered_point_cloud->size();
-		pose_clusters_out.push_back(zyk::pose_cluster(Eigen::Affine3f(icp.getFinalTransformation())*coarse_pose_clusters[i].mean_transformation, score));
+		pose_clusters_out[i] = zyk::pose_cluster(Eigen::Affine3f(icp.getFinalTransformation())*coarse_pose_clusters[i].mean_transformation, score);
 	}
 	double time_spent = (clock() - time1) / 1000.0;
 	std::cout << "ICP finished for " << max_number << " in " << time_spent << "s" << std::endl;
@@ -1455,8 +1462,10 @@ void zyk::PPF_Space::match(pcl::PointCloud<PointType>::Ptr scene, pcl::PointClou
     else
         pose_clusters=rawClusters;
 	std::sort(pose_clusters.begin(), pose_clusters.end(), zyk::pose_cluster_comp);
-
-
+	for (int i = 0; i < pose_clusters.size(); ++i)
+	{
+		pose_clusters[i].averageCluster();
+	}
 	//////recompute score
 	if (recompute_score_dis_thresh > 0)
 	{

@@ -310,7 +310,7 @@ main(int argc, char *argv[])
   model_feature_space.model_size[1]=model_size[1];
   model_feature_space.model_size[2]=model_size[2];
   model_feature_space.model_res = model_ss_;
-  cout << "Calculated model max distance is " << model_feature_space.getMaxD() << endl;
+  cout << "Calculated model max distance is " << model_feature_space.getMaxPPFD() << endl;
   //
   // compute no empty ppf box nunber
   //

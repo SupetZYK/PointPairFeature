@@ -724,11 +724,11 @@ main(int argc, char *argv[])
 					scanf("  %d", &icp_type);
 					if (icp_type == 1) {
 						refined_pose_clusters.clear();
-						model_feature_space.ICP_Refine(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res);
+						model_feature_space.ICP_Refine(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res, scene_ss_);
 					}
 					else if (icp_type == 2) {
 						refined_pose_clusters.clear();
-						model_feature_space.ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res, 6);
+						model_feature_space.ICP_Refine1_0(scene, pose_clusters, refined_pose_clusters, max_show_number, original_scene_res, scene_ss_);
 					}
 				}
 				if (key == 'C')

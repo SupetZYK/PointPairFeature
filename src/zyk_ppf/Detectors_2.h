@@ -33,6 +33,8 @@ public:
 	*@ maxNumber, 10 by default, max number of poses to store
 	*@ mlsOrder, 1 by default, smooth order
 	*@ isDetected, true by default
+	*@ icp_type,-1 default type 1. 0: version 0 for icp once with correspondence distance set to downSampleRatio
+								   1: version 1 for icp twice, first set correspondence distance to downSampleRatio, then scene resolution
 	*/
 	typedef struct _detectObjParams {
 		std::string ObjectName;
@@ -42,11 +44,11 @@ public:
 		double MaxOverlapDistRel;
 		int mlsOrder;
 		bool isDetected;
+		int icp_type;
 		/*Extra Input
 		**/
-		float param_1;
 		float param_2;
-		_detectObjParams() :ObjectName(""),ShowColor("green"),downSampleRatio(0.05), minScore(0.3), MaxOverlapDistRel(0.5), mlsOrder(1), param_1(-1.0), param_2(-1.0), isDetected(true){};
+		_detectObjParams() :ObjectName(""),ShowColor("green"),downSampleRatio(0.05), minScore(0.3), MaxOverlapDistRel(0.5), mlsOrder(1), icp_type(-1), param_2(-1.0), isDetected(true){};
 	} detectObjParams;
 	/** struct for train options
 	*@ downSampleRatio, 0.05 by default, relative to the diameter of the model bounding box
@@ -149,7 +151,8 @@ public:
 		double downSampleRatio; 
 		double keypointerRatio; 
 		int matchMaxNum; 
-		_detectorParams() :smoothKNN(60), downSampleRatio(0.05), keypointerRatio(0.2), matchMaxNum(10){};
+		bool omp_flag;
+		_detectorParams() :smoothKNN(60), downSampleRatio(0.05), keypointerRatio(0.2), matchMaxNum(10), omp_flag(false) {};
 	}detectorParams;
 public:
 	~CDetectors3D() { clear(); };

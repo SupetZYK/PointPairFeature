@@ -111,7 +111,7 @@ int CDetectModel3D::createSurModelFromCADFile(string filePath, string objName)
     p_PPF = NULL;
   }
   p_PPF = new(zyk::PPF_Space);
-  if (!p_PPF->init(objName, input_points, input_normals, 20, 20, true))
+  if (!p_PPF->init(objName, input_points, input_normals, 15, 20, true))
 	  return -2;
 
   p_PPF->model_res = model_ss_;
@@ -223,7 +223,8 @@ bool CDetectors3D::findPart(const int objIdx)
 	//downsample
 	pcl::IndicesPtr sampled_index_ptr;
   //@TODO
-	float scene_ss_ = (modelDetector.mDetectObjParams.downSampleRatio / modelDetector.mTrainOptions.downSampleRatio)*pPPF->model_res;
+	//float scene_ss_ = (modelDetector.mDetectObjParams.downSampleRatio / modelDetector.mTrainOptions.downSampleRatio)*pPPF->model_res;
+	float scene_ss_ = modelDetector.mDetectObjParams.downSampleRatio * pPPF->getDiameter();
 	sampled_index_ptr = zyk::uniformDownSamplePoint(scene, scene_ss_, scene_keypoints);
 
 	//normals
@@ -243,24 +244,51 @@ bool CDetectors3D::findPart(const int objIdx)
 	}
 	vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> pose_clusters;
 	vector<zyk::pose_cluster, Eigen::aligned_allocator<zyk::pose_cluster>> refined_pose_clusters;
-	pPPF->match(
-		scene_keypoints, 
-		scene_keyNormals, 
-		false, //spread ppf switch
-		true, //two ball switch
-		true, //use weighted vote
-		DetectorParams.keypointerRatio, 
-		4, //max vote thresh
-		0.95, //max vote percentage
-		30, //number angle bins
-		0.15, //angle thresh
-		0.1, //first distance thresh
-		0.1, //recompute score distance thresh
-		0.3, //recompute score angle thresh
-		modelDetector.mDetectObjParams.MaxOverlapDistRel,// max overlap ratio
-		1, //
-		pose_clusters
-	);
+	if (DetectorParams.omp_flag)
+	{
+		std::cout << "[PPF] USING OMP VERSION!" << std::endl;
+		pPPF->match_v2(
+			scene_keypoints,
+			scene_keyNormals,
+			false, //spread ppf switch
+			true, //two ball switch
+			true, //use weighted vote
+			DetectorParams.keypointerRatio,
+			4, //max vote thresh
+			0.95, //max vote percentage
+			30, //number angle bins
+			0.15, //angle thresh
+			0.1, //first distance thresh
+			0.1, //recompute score distance thresh
+			0.3, //recompute score angle thresh
+			modelDetector.mDetectObjParams.MaxOverlapDistRel,// max overlap ratio
+			1, //
+			pose_clusters
+		);
+	}
+	else
+	{
+		std::cout << "[PPF] USING SINGLE VERSION!" << std::endl;
+		pPPF->match(
+			scene_keypoints,
+			scene_keyNormals,
+			false, //spread ppf switch
+			true, //two ball switch
+			true, //use weighted vote
+			DetectorParams.keypointerRatio,
+			4, //max vote thresh
+			0.95, //max vote percentage
+			30, //number angle bins
+			0.15, //angle thresh
+			0.1, //first distance thresh
+			0.1, //recompute score distance thresh
+			0.3, //recompute score angle thresh
+			modelDetector.mDetectObjParams.MaxOverlapDistRel,// max overlap ratio
+			1, //
+			pose_clusters
+		);
+	}
+
 	if (pose_clusters.empty()) {
 		return false;
 	}
@@ -270,14 +298,24 @@ bool CDetectors3D::findPart(const int objIdx)
 	double minScore = modelDetector.mDetectObjParams.minScore;
 	//do icp
 	int icp_number =std::min(DetectorParams.matchMaxNum, int(pose_clusters.size()));
-
-	if (modelDetector.mDetectObjParams.param_1 > 0) {
-		std::cout << "ICP VERSION 2..." << std::endl;
-		pPPF->ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution, modelDetector.mDetectObjParams.param_1);
+	int icp_type = modelDetector.mDetectObjParams.icp_type;
+	if (icp_type < 0)
+		icp_type = 1;
+	switch (icp_type)
+	{
+	case 0:
+	{
+		std::cout << "ICP VERSION 0..." << std::endl;
+		pPPF->ICP_Refine(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution, scene_ss_);
+		break;
 	}
-	else {
+	default:
+	{
 		std::cout << "ICP VERSION 1..." << std::endl;
-		pPPF->ICP_Refine(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution);
+		//pPPF->ICP_Refine2_0(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution, modelDetector.mDetectObjParams.param_1);
+		pPPF->ICP_Refine1_0(scene, pose_clusters, refined_pose_clusters, icp_number, scene_resolution, scene_ss_);
+		break;
+	}
 	}
 	std::sort(refined_pose_clusters.begin(), refined_pose_clusters.end(), zyk::pose_cluster_comp);
 	matchResult& res = modelDetector.result;

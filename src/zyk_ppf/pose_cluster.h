@@ -13,8 +13,8 @@ namespace zyk
 		Eigen::Quaternionf first_q;
 		float first_angle;
 	public:
-		//pose_cluster(){};
-	  pose_cluster(const Eigen::Affine3f& transformation, float vote):vote_count(0.0),old_vote_count(0.0){ checkAndPutIn(transformation, vote, 100, 100); };
+		pose_cluster() :vote_count(0.0), old_vote_count(0.0) {};
+		pose_cluster(const Eigen::Affine3f& transformation, float vote):vote_count(0.0),old_vote_count(0.0){ checkAndPutIn(transformation, vote, 100, 100); };
 		~pose_cluster(){};
 		bool checkAndPutIn(const Eigen::Affine3f& transformation, float vote, float distance_thresh, float angle_thresh);
 		bool checkAndPutIn_V2(const Eigen::Affine3f& transformation, float vote, float distance_thresh, float angle_thresh);
